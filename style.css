@@ -427,3 +427,44 @@ width: 100%;
         width: 100%;
     }
 }
+
+/* Fix: allow form fields to be clickable/typeable */
+
+.main-grid,
+.sidebar-panel,
+.input-card,
+.form-group,
+input,
+select,
+textarea,
+button {
+    position: relative;
+    z-index: 10;
+}
+
+.hero,
+.instructions-card {
+    position: relative;
+    z-index: 1;
+}
+
+input,
+select,
+textarea {
+    pointer-events: auto !important;
+    user-select: text !important;
+}
+
+button {
+    pointer-events: auto !important;
+}
+
+/* Prevent decorative layers from blocking clicks */
+.hero::before,
+.hero::after,
+.instructions-card::before,
+.instructions-card::after,
+.app-container::before,
+.app-container::after {
+    pointer-events: none !important;
+}
