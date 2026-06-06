@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OneToMany Contractors</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <link 
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
+        rel="stylesheet"
+    >
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <header class="hero">
+            <div class="hero-content">
+
+                <div class="logo-wrapper">
+                    <img 
+                        src="logo.png" 
+                        alt="OneToMany Contractors Logo" 
+                        class="app-logo"
+                        onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';"
+                    >
+
+                    <div 
+                        id="logoFallback" 
+                        style="
+                            display: none;
+                            width: 96px;
+                            height: 96px;
+                            margin: 0 auto 20px auto;
+                            border-radius: 24px;
+                            align-items: center;
+                            justify-content: center;
+                            background: linear-gradient(135deg, #22c55e, #16a34a);
+                            color: #111827;
+                            font-size: 28px;
+                            font-weight: 900;
+                            box-shadow: 0 0 30px rgba(34, 197, 94, 0.45);
+                        "
+                    >
+                        OTM
+                    </div>
+                </div>
+
+                <h1 class="hero-title">OneToMany Contractors</h1>
+<p class="hero-tagline">One Request. Many Documents. More Jobs.</p>
+
+            </div>
+        </header>
+
+        <section class="instructions-card">
+            <h3>How It Works</h3>
+
+            <p>
+                Enter customer details <strong>once</strong>, then instantly generate a professional quote,
+                invoice, service agreement draft, customer email, and follow-up SMS — all tailored to your business.
+            </p>
+        </section>
+
+        <div class="main-grid">
+
+            <aside class="sidebar-panel">
+
+                <div class="input-card">
+
+                    <h2 class="card-title">
+                        <i class="fas fa-edit"></i>
+                        Job Details
+                    </h2>
+
+                    <div class="form-group">
+                        <label for="businessName">
+                            <i class="fas fa-building"></i>
+                            Business Name
+                        </label>
+
+                        <input 
+                            type="text" 
+                            id="businessName" 
+                            placeholder="Example: Smith Contracting LLC"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="customerName">
+                            <i class="fas fa-user"></i>
+                            Customer Name
+                        </label>
+
+                        <input 
+                            id="customerName" 
+                            type="text" 
+                            placeholder="Example: John Smith"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="customerEmail">
+                            <i class="fas fa-envelope"></i>
+                            Customer Email
+                        </label>
+
+                        <input 
+                            id="customerEmail" 
+                            type="email" 
+                            placeholder="Example: john@email.com"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="customerPhone">
+                            <i class="fas fa-phone"></i>
+                            Customer Phone
+                        </label>
+
+                        <input 
+                            id="customerPhone" 
+                            type="tel" 
+                            placeholder="Example: 555-123-4567"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="projectType">
+                            <i class="fas fa-tools"></i>
+                            Project Type
+                        </label>
+
+                        <select id="projectType">
+                            <option>Deck Repair</option>
+                            <option>Roofing</option>
+                            <option>Landscaping</option>
+                            <option>Painting</option>
+                            <option>HVAC</option>
+                            <option>Electrical</option>
+                            <option>Plumbing</option>
+                            <option>General Contracting</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="estimatedPrice">
+                            <i class="fas fa-dollar-sign"></i>
+                            Estimated Price
+                        </label>
+
+                        <input 
+                            id="estimatedPrice" 
+                            type="text" 
+                            inputmode="numeric" 
+                            placeholder="Example: $2,500"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="timeline">
+                            <i class="fas fa-calendar"></i>
+                            Estimated Timeline
+                        </label>
+
+                        <input 
+                            id="timeline" 
+                            type="text" 
+                            placeholder="Example: 2 weeks"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="jobStatus">
+                            <i class="fas fa-chart-line"></i>
+                            Job Status
+                        </label>
+
+                        <select id="jobStatus">
+                            <option>Lead</option>
+                            <option>Quoted</option>
+                            <option>Won</option>
+                            <option>Lost</option>
+                            <option>Completed</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="followUpDate">
+                            <i class="fas fa-bell"></i>
+                            Follow-Up Date
+                        </label>
+
+                        <input 
+                            id="followUpDate" 
+                            type="date"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="projectNotes">
+                            <i class="fas fa-clipboard"></i>
+                            Project Notes
+                        </label>
+
+                        <textarea 
+                            id="projectNotes" 
+                            placeholder="Example: Replace damaged boards and apply weather-resistant stain."
+                        ></textarea>
+                    </div>
+
+                    <div class="button-group">
+
+                        <button id="generateAllBtn" class="btn btn-primary btn-large">
+                            <i class="fas fa-wand-magic-sparkles"></i>
+                            Generate Documents
+                        </button>
+
+                        <button id="aiImproveBtn" class="btn btn-ai btn-large">
+                            <i class="fas fa-robot"></i>
+                            Improve with AI
+                        </button>
+
+                        <button id="saveJobBtn" class="btn btn-secondary">
+                            <i class="fas fa-floppy-disk"></i>
+                            Save Job
+                        </button>
+
+                        <button id="clearFormBtn" class="btn btn-danger">
+                            <i class="fas fa-broom"></i>
+                            Clear
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div class="saved-jobs-card">
+
+                    <h2 class="card-title">
+                        <i class="fas fa-history"></i>
+                        Saved Jobs
+                    </h2>
+
+                    <div id="savedJobsList" class="saved-jobs-list">
+                        <p class="empty-state">No saved jobs yet</p>
+                    </div>
+
+                    <button id="clearJobsBtn" class="btn btn-danger btn-full">
+                        <i class="fas fa-trash"></i>
+                        Clear All Jobs
+                    </button>
+
+                </div>
+
+            </aside>
+
+            <section class="outputs-container">
+
+                <div class="output-card">
+
+                    <div class="output-header">
+                        <h3>
+                            <i class="fas fa-quote-left"></i>
+                            Quote
+                        </h3>
+                    </div>
+
+                    <textarea id="quoteOutput" readonly></textarea>
+
+                    <div class="action-row">
+                        <button class="copy-btn">
+                            <i class="fas fa-copy"></i>
+                            Copy Text
+                        </button>
+
+                        <button class="export-btn">
+                            <i class="fas fa-file-pdf"></i>
+                            Export PDF
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="output-card">
+
+                    <div class="output-header">
+                        <h3>
+                            <i class="fas fa-receipt"></i>
+                            Invoice
+                        </h3>
+                    </div>
+
+                    <textarea id="invoiceOutput" readonly></textarea>
+
+                    <div class="action-row">
+                        <button class="copy-btn">
+                            <i class="fas fa-copy"></i>
+                            Copy Text
+                        </button>
+
+                        <button class="export-btn">
+                            <i class="fas fa-file-pdf"></i>
+                            Export PDF
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="output-card">
+
+                    <div class="output-header">
+                        <h3>
+                            <i class="fas fa-handshake"></i>
+                            Service Agreement
+                        </h3>
+                    </div>
+
+                    <textarea id="agreementOutput"></textarea>
+
+                    <div class="action-row">
+                        <button class="copy-btn">
+                            <i class="fas fa-copy"></i>
+                            Copy Text
+                        </button>
+
+                        <button class="export-btn">
+                            <i class="fas fa-file-pdf"></i>
+                            Export PDF
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="output-card">
+
+                    <div class="output-header">
+                        <h3>
+                            <i class="fas fa-envelope-open"></i>
+                            Customer Email
+                        </h3>
+                    </div>
+
+                    <textarea id="emailOutput" readonly></textarea>
+
+                    <div class="action-row">
+                        <button class="copy-btn">
+                            <i class="fas fa-copy"></i>
+                            Copy Text
+                        </button>
+
+                        <button class="send-btn">
+                            <i class="fas fa-paper-plane"></i>
+                            Open Gmail
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="output-card">
+
+                    <div class="output-header">
+                        <h3>
+                            <i class="fas fa-comment-dots"></i>
+                            Follow-Up SMS
+                        </h3>
+                    </div>
+
+                    <textarea id="smsOutput" readonly></textarea>
+
+                    <div class="action-row">
+                        <button class="copy-btn">
+                            <i class="fas fa-copy"></i>
+                            Copy SMS
+                        </button>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </div>
+
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="scripts.js"></script>
+
+</body>
+
+</html>
