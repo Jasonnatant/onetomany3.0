@@ -525,3 +525,22 @@ button {
     font-size: 0.9rem;
     line-height: 1.6;
 }
+
+/* Pro / Trial UI */
+
+.btn-pro,
+#upgradeProBtn {
+    width: 100%;
+    margin-top: 14px;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #111827;
+    box-shadow: 0 10px 28px rgba(251, 191, 36, 0.25);
+}
+
+.trial-status {
+    margin: 12px 0 0;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    text-align: center;
+    line-height: 1.4;
+}

@@ -26,6 +26,111 @@ function showToast(message, type = "success") {
 }
 
 /* ==========================
+   TRIAL / PRO SETTINGS
+========================== */
+
+const PRO_PAYMENT_LINK = "your_real_stripe_payment_link_here";
+
+const TRIAL_LENGTH_DAYS = 7;
+const FREE_AI_PER_DAY = 1;
+
+function getTodayKey() {
+    return new Date().toISOString().split("T")[0];
+}
+
+function getTrialData() {
+    let trialData = JSON.parse(localStorage.getItem("oneToManyTrial"));
+
+    if (!trialData) {
+        trialData = {
+            trialStartedAt: new Date().toISOString(),
+            aiUsageByDate: {}
+        };
+
+        localStorage.setItem("oneToManyTrial", JSON.stringify(trialData));
+    }
+
+    return trialData;
+}
+
+function saveTrialData(trialData) {
+    localStorage.setItem("oneToManyTrial", JSON.stringify(trialData));
+}
+
+function getTrialDaysUsed(trialData) {
+    const start = new Date(trialData.trialStartedAt);
+    const now = new Date();
+
+    const diffTime = now.getTime() - start.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays + 1;
+}
+
+function isTrialExpired(trialData) {
+    return getTrialDaysUsed(trialData) > TRIAL_LENGTH_DAYS;
+}
+
+function getTodayAIUsage(trialData) {
+    const today = getTodayKey();
+    return trialData.aiUsageByDate[today] || 0;
+}
+
+function canUseFreeAI() {
+    const trialData = getTrialData();
+
+    if (isTrialExpired(trialData)) {
+        return {
+            allowed: false,
+            reason: "expired"
+        };
+    }
+
+    const todayUsage = getTodayAIUsage(trialData);
+
+    if (todayUsage >= FREE_AI_PER_DAY) {
+        return {
+            allowed: false,
+            reason: "daily-limit"
+        };
+    }
+
+    return {
+        allowed: true,
+        reason: "allowed"
+    };
+}
+
+function recordAIUsage() {
+    const trialData = getTrialData();
+    const today = getTodayKey();
+
+    trialData.aiUsageByDate[today] = (trialData.aiUsageByDate[today] || 0) + 1;
+
+    saveTrialData(trialData);
+    updateTrialStatus();
+}
+
+function updateTrialStatus() {
+    const trialStatus = document.getElementById("trialStatus");
+
+    if (!trialStatus) return;
+
+    const trialData = getTrialData();
+    const daysUsed = getTrialDaysUsed(trialData);
+    const daysLeft = Math.max(TRIAL_LENGTH_DAYS - daysUsed + 1, 0);
+    const todayUsage = getTodayAIUsage(trialData);
+
+    if (isTrialExpired(trialData)) {
+        trialStatus.textContent = "Free trial ended. Upgrade to Pro for continued AI document generation.";
+        return;
+    }
+
+    trialStatus.textContent =
+        `Free trial: ${daysLeft} day(s) left • AI used today: ${todayUsage}/${FREE_AI_PER_DAY}`;
+}
+
+/* ==========================
    PRICE FORMATTER
 ========================== */
 
@@ -670,6 +775,20 @@ const aiImproveBtn = document.getElementById("aiImproveBtn");
 if (aiImproveBtn) {
     aiImproveBtn.addEventListener("click", async function () {
         try {
+            const trialCheck = canUseFreeAI();
+
+            if (!trialCheck.allowed) {
+                if (trialCheck.reason === "expired") {
+                    showToast("Your free trial has ended. Upgrade to Pro to keep using AI.", "warning");
+                }
+
+                if (trialCheck.reason === "daily-limit") {
+                    showToast("Free trial limit reached. You get 1 AI generation per day. Upgrade to Pro for more.", "warning");
+                }
+
+                return;
+            }
+
             aiImproveBtn.disabled = true;
             aiImproveBtn.textContent = "⏳ Generating...";
 
@@ -727,6 +846,7 @@ if (aiImproveBtn) {
             document.getElementById("smsOutput").value =
                 aiData.sms?.message || aiData.sms || "";
 
+            recordAIUsage();
             showToast("🤖 AI documents generated!", "success");
 
         } catch (error) {
@@ -739,4 +859,22 @@ if (aiImproveBtn) {
     });
 }
 
+/* ==========================
+   UPGRADE TO PRO
+========================== */
+
+const upgradeProBtn = document.getElementById("upgradeProBtn");
+
+if (upgradeProBtn) {
+    upgradeProBtn.addEventListener("click", function () {
+        if (PRO_PAYMENT_LINK === "PASTE_YOUR_STRIPE_PAYMENT_LINK_HERE") {
+            showToast("Stripe payment link has not been added yet.", "warning");
+            return;
+        }
+
+        window.open(PRO_PAYMENT_LINK, "_blank");
+    });
+}
+
+updateTrialStatus();
 displaySavedJobs();
