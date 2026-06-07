@@ -6,6 +6,26 @@ const savedJobsList = document.getElementById("savedJobsList");
 const clearJobsBtn = document.getElementById("clearJobsBtn");
 
 /* ==========================
+   TOAST NOTIFICATIONS
+========================== */
+
+function showToast(message, type = "success") {
+    const toast = document.getElementById("toast");
+
+    if (!toast) {
+        alert(message);
+        return;
+    }
+
+    toast.textContent = message;
+    toast.className = "toast show " + type;
+
+    setTimeout(function () {
+        toast.className = "toast";
+    }, 2600);
+}
+
+/* ==========================
    PRICE FORMATTER
 ========================== */
 
@@ -60,22 +80,22 @@ function getFormData() {
 
 function validateJob(job) {
     if (job.customerName === "") {
-        alert("Please enter the customer's name.");
+        showToast("Please enter the customer's name.", "warning");
         return false;
     }
 
     if (job.estimatedPrice === null) {
-        alert("Please enter a valid estimated price.");
+        showToast("Please enter a valid estimated price.", "warning");
         return false;
     }
 
     if (job.timeline === "") {
-        alert("Please enter an estimated timeline.");
+        showToast("Please enter an estimated timeline.", "warning");
         return false;
     }
 
     if (job.projectNotes === "") {
-        alert("Please enter project notes.");
+        showToast("Please enter project notes.", "warning");
         return false;
     }
 
@@ -203,6 +223,7 @@ generateButton.addEventListener("click", function () {
     if (!validateJob(job)) return;
 
     generateDocuments(job);
+    showToast("✅ Documents generated.", "success");
 });
 
 /* ==========================
@@ -224,7 +245,7 @@ saveJobButton.addEventListener("click", function () {
 
     displaySavedJobs();
 
-    alert("✅ Job saved successfully!");
+    showToast("✅ Job saved successfully!", "success");
 });
 
 /* ==========================
@@ -262,7 +283,7 @@ clearFormBtn.addEventListener("click", function () {
     document.getElementById("emailOutput").value = "";
     document.getElementById("smsOutput").value = "";
 
-    alert("🧹 Form cleared!");
+    showToast("🧹 Form cleared!", "success");
 });
 
 /* ==========================
@@ -328,7 +349,7 @@ savedJobsList.addEventListener("click", function (event) {
         const job = savedJobs[index];
 
         if (!job) {
-            alert("Could not load this job.");
+            showToast("Could not load this job.", "error");
             return;
         }
 
@@ -353,6 +374,7 @@ savedJobsList.addEventListener("click", function (event) {
         document.getElementById("projectNotes").value = job.projectNotes || "";
 
         generateDocuments(job);
+        showToast("📂 Saved job loaded.", "success");
     }
 
     if (deleteBtn) {
@@ -363,6 +385,8 @@ savedJobsList.addEventListener("click", function (event) {
         localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
 
         displaySavedJobs();
+
+        showToast("🗑️ Saved job deleted.", "success");
     }
 });
 
@@ -375,7 +399,7 @@ clearJobsBtn.addEventListener("click", function () {
 
     displaySavedJobs();
 
-    alert("🗑️ All saved jobs cleared.");
+    showToast("🗑️ All saved jobs cleared.", "success");
 });
 
 /* ==========================
@@ -390,7 +414,7 @@ copyButtons.forEach(function (button) {
         const textArea = outputCard.querySelector("textarea");
 
         if (textArea.value.trim() === "") {
-            alert("Generate documents first.");
+            showToast("Generate documents first.", "warning");
             return;
         }
 
@@ -398,6 +422,8 @@ copyButtons.forEach(function (button) {
 
         const originalHTML = button.innerHTML;
         button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+
+        showToast("📋 Text copied.", "success");
 
         setTimeout(function () {
             button.innerHTML = originalHTML;
@@ -417,7 +443,7 @@ exportButtons.forEach(function (button) {
         const textArea = outputCard.querySelector("textarea");
 
         if (textArea.value.trim() === "") {
-            alert("Generate documents first.");
+            showToast("Generate documents first.", "warning");
             return;
         }
 
@@ -461,7 +487,6 @@ exportButtons.forEach(function (button) {
         doc.setLineWidth(0.7);
         doc.line(20, 54, 190, 54);
 
-        // Document Title
         doc.setFont("helvetica", "bold");
         doc.setFontSize(16);
         doc.setTextColor(15, 23, 42);
@@ -549,7 +574,6 @@ exportButtons.forEach(function (button) {
                 doc.setFontSize(14);
                 doc.setTextColor(15, 23, 42);
 
-                // Skip duplicate section title if it matches the main document title
                 if (
                     (lowerLine === "quote" && title.toLowerCase().includes("quote")) ||
                     (lowerLine === "invoice" && title.toLowerCase().includes("invoice")) ||
@@ -599,6 +623,8 @@ exportButtons.forEach(function (button) {
         const fileName = title.replace(/[^a-z0-9]/gi, "_") + ".pdf";
 
         doc.save(fileName);
+
+        showToast("📄 PDF exported.", "success");
     });
 });
 
@@ -619,7 +645,7 @@ if (emailOutput) {
             const customerEmail = document.getElementById("customerEmail").value.trim();
 
             if (emailText.trim() === "") {
-                alert("Generate the email first.");
+                showToast("Generate the email first.", "warning");
                 return;
             }
 
@@ -630,6 +656,7 @@ if (emailOutput) {
                 "&body=" + encodeURIComponent(emailText);
 
             window.open(gmailUrl, "_blank");
+            showToast("📨 Gmail opened.", "success");
         });
     }
 }
@@ -700,11 +727,11 @@ if (aiImproveBtn) {
             document.getElementById("smsOutput").value =
                 aiData.sms?.message || aiData.sms || "";
 
-            alert("🤖 AI documents generated!");
+            showToast("🤖 AI documents generated!", "success");
 
         } catch (error) {
             console.error("AI generation failed:", error);
-            alert("❌ AI generation failed. Check the console and terminal.");
+            showToast("❌ AI generation failed. Please try again.", "error");
         } finally {
             aiImproveBtn.disabled = false;
             aiImproveBtn.textContent = "✨ Improve With AI";
