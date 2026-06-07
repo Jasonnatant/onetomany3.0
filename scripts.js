@@ -29,7 +29,7 @@ function showToast(message, type = "success") {
    TRIAL / PRO SETTINGS
 ========================== */
 
-const PRO_PAYMENT_LINK = "your_real_stripe_payment_link_here";
+const PRO_PAYMENT_LINK = "https://buy.stripe.com/dRm28q9se7HWcLLayU4ow00";
 
 const TRIAL_LENGTH_DAYS = 7;
 const FREE_AI_PER_DAY = 1;
