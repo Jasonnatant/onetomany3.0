@@ -5,13 +5,41 @@ import OpenAI from "openai";
 import express from "express";
 import cors from "cors";
 import path from "path";
+import Stripe from "stripe";
 import { fileURLToPath } from "url";
+
+/* ==========================
+   BASIC SERVER SETUP
+========================== */
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+/* ==========================
+   ENV CHECKS
+========================== */
+
+console.log("API Key Loaded:", process.env.OPENAI_API_KEY ? "YES" : "NO");
+console.log("Stripe Key Loaded:", process.env.STRIPE_SECRET_KEY ? "YES" : "NO");
+console.log("Stripe Price Loaded:", process.env.STRIPE_PRICE_ID ? "YES" : "NO");
+console.log("App URL Loaded:", process.env.APP_URL ? process.env.APP_URL : "NO - using fallback");
+
+/* ==========================
+   CLIENTS
+========================== */
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+/* ==========================
+   MIDDLEWARE
+========================== */
 
 app.use(cors());
 app.use(express.json());
@@ -21,15 +49,100 @@ app.get("/", function (req, res) {
     res.sendFile(path.join(__dirname, "index.html"));
 });
 
-console.log("API Key Loaded:", process.env.OPENAI_API_KEY ? "YES" : "NO");
+/* ==========================
+   STRIPE CHECKOUT
+========================== */
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+app.post("/create-checkout-session", async function (req, res) {
+    try {
+        if (!process.env.STRIPE_SECRET_KEY) {
+            return res.status(500).json({
+                error: "Stripe secret key is missing."
+            });
+        }
+
+        if (!process.env.STRIPE_PRICE_ID) {
+            return res.status(500).json({
+                error: "Stripe price ID is missing."
+            });
+        }
+
+        const appUrl = process.env.APP_URL || "http://localhost:3000";
+
+        const session = await stripe.checkout.sessions.create({
+            mode: "subscription",
+            line_items: [
+                {
+                    price: process.env.STRIPE_PRICE_ID,
+                    quantity: 1
+                }
+            ],
+            success_url: `${appUrl}/?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${appUrl}/?checkout=cancelled`,
+            allow_promotion_codes: true
+        });
+
+        return res.json({
+            url: session.url
+        });
+
+    } catch (error) {
+        console.error("Stripe checkout error message:", error.message);
+        console.error("Stripe checkout full error:", error);
+
+        return res.status(500).json({
+            error: error.message || "Unable to create checkout session."
+        });
+    }
 });
 
-app.post("/generate-ai", async function (req, res) {
-
+app.get("/verify-checkout-session", async function (req, res) {
     try {
+        const sessionId = req.query.session_id;
+
+        if (!sessionId) {
+            return res.status(400).json({
+                paid: false,
+                error: "Missing session ID."
+            });
+        }
+
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+        const isPaid =
+            session.payment_status === "paid" ||
+            session.status === "complete" ||
+            Boolean(session.subscription);
+
+        return res.json({
+            paid: isPaid,
+            customerEmail: session.customer_details?.email || null,
+            subscriptionId: session.subscription || null
+        });
+
+    } catch (error) {
+        console.error("Stripe verify error message:", error.message);
+        console.error("Stripe verify full error:", error);
+
+        return res.status(500).json({
+            paid: false,
+            error: error.message || "Unable to verify checkout session."
+        });
+    }
+});
+
+/* ==========================
+   OPENAI DOCUMENT GENERATION
+========================== */
+
+app.post("/generate-ai", async function (req, res) {
+    try {
+        if (!process.env.OPENAI_API_KEY) {
+            return res.status(500).json({
+                error: "OpenAI API key is missing."
+            });
+        }
+
         const {
             businessName,
             customerName,
@@ -144,18 +257,23 @@ Return JSON exactly in this structure:
 
         const text = response.choices[0].message.content;
 
-        res.json({
+        return res.json({
             result: text
         });
 
     } catch (error) {
-        console.error("AI generation error:", error);
+        console.error("AI generation error message:", error.message);
+        console.error("AI generation full error:", error);
 
-        res.status(500).json({
-            error: "AI generation failed."
+        return res.status(500).json({
+            error: error.message || "AI generation failed."
         });
     }
 });
+
+/* ==========================
+   START SERVER
+========================== */
 
 app.listen(PORT, function () {
     console.log(`Server running on port ${PORT}`);

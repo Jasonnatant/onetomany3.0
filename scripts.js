@@ -29,10 +29,17 @@ function showToast(message, type = "success") {
    TRIAL / PRO SETTINGS
 ========================== */
 
-const PRO_PAYMENT_LINK = "https://buy.stripe.com/dRm28q9se7HWcLLayU4ow00";
-
 const TRIAL_LENGTH_DAYS = 7;
 const FREE_AI_PER_DAY = 1;
+
+function isProActive() {
+    return localStorage.getItem("oneToManyPro") === "yes";
+}
+
+function activateProAccess() {
+    localStorage.setItem("oneToManyPro", "yes");
+    updateTrialStatus();
+}
 
 function getTodayKey() {
     return new Date().toISOString().split("T")[0];
@@ -88,6 +95,10 @@ function isTrialActive() {
 }
 
 function requireActiveTrial() {
+    if (isProActive()) {
+        return true;
+    }
+
     if (!isTrialActive()) {
         showToast("Your free trial has ended. Upgrade to Pro for $20/month to continue using OneToMany Contractors.", "warning");
         return false;
@@ -107,6 +118,13 @@ function getTodayAIUsage(trialData) {
 }
 
 function canUseFreeAI() {
+    if (isProActive()) {
+        return {
+            allowed: true,
+            reason: "pro"
+        };
+    }
+
     const trialData = getTrialData();
 
     if (isTrialExpired(trialData)) {
@@ -145,6 +163,12 @@ function updateTrialStatus() {
     const trialStatus = document.getElementById("trialStatus");
 
     if (!trialStatus) return;
+
+    if (isProActive()) {
+        trialStatus.textContent = "Pro active • Unlimited access unlocked.";
+        trialStatus.classList.remove("trial-ended");
+        return;
+    }
 
     const trialData = getTrialData();
     const daysUsed = getTrialDaysUsed(trialData);
@@ -1063,7 +1087,10 @@ if (aiImproveBtn) {
             document.getElementById("smsOutput").value =
                 aiData.sms?.message || aiData.sms || "";
 
-            recordAIUsage();
+            if (!isProActive()) {
+                recordAIUsage();
+            }
+
             showToast("🤖 AI documents generated!", "success");
 
         } catch (error) {
@@ -1083,14 +1110,72 @@ if (aiImproveBtn) {
 const upgradeProBtn = document.getElementById("upgradeProBtn");
 
 if (upgradeProBtn) {
-    upgradeProBtn.addEventListener("click", function () {
-        if (PRO_PAYMENT_LINK === "PASTE_YOUR_STRIPE_PAYMENT_LINK_HERE") {
-            showToast("Stripe payment link has not been added yet.", "warning");
-            return;
+    upgradeProBtn.addEventListener("click", async function () {
+        try {
+            upgradeProBtn.disabled = true;
+            upgradeProBtn.textContent = "Opening Checkout...";
+
+            const response = await fetch("/create-checkout-session", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.url) {
+                throw new Error(data.error || "Could not start checkout.");
+            }
+
+            window.location.href = data.url;
+
+        } catch (error) {
+            console.error("Checkout error:", error);
+            showToast("Could not open Stripe checkout. Please try again.", "error");
+        } finally {
+            upgradeProBtn.disabled = false;
+            upgradeProBtn.innerHTML = '<i class="fas fa-crown"></i> Upgrade to Pro';
+        }
+    });
+}
+
+/* ==========================
+   VERIFY STRIPE SUCCESS
+========================== */
+
+async function checkStripeSuccess() {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    const checkoutStatus = params.get("checkout");
+
+    if (checkoutStatus === "cancelled") {
+        showToast("Checkout cancelled.", "warning");
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+    }
+
+    if (!sessionId) return;
+
+    try {
+        showToast("Verifying payment...", "success");
+
+        const response = await fetch(`/verify-checkout-session?session_id=${encodeURIComponent(sessionId)}`);
+        const data = await response.json();
+
+        if (data.paid) {
+            activateProAccess();
+            showToast("Pro unlocked. Thank you for subscribing!", "success");
+        } else {
+            showToast("Payment could not be verified yet. Contact support if you were charged.", "warning");
         }
 
-        window.open(PRO_PAYMENT_LINK, "_blank");
-    });
+    } catch (error) {
+        console.error("Payment verification error:", error);
+        showToast("Could not verify payment. Contact support if you were charged.", "error");
+    } finally {
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 }
 
 /* ==========================
@@ -1098,5 +1183,6 @@ if (upgradeProBtn) {
 ========================== */
 
 setupLiabilityModal();
+checkStripeSuccess();
 updateTrialStatus();
 displaySavedJobs();
