@@ -82,6 +82,20 @@ function isTrialExpired(trialData) {
     return getTrialDaysUsed(trialData) > TRIAL_LENGTH_DAYS;
 }
 
+function isTrialActive() {
+    const trialData = getTrialData();
+    return !isTrialExpired(trialData);
+}
+
+function requireActiveTrial() {
+    if (!isTrialActive()) {
+        showToast("Your free trial has ended. Upgrade to Pro for $20/month to continue using OneToMany Contractors.", "warning");
+        return false;
+    }
+
+    return true;
+}
+
 function getTodayAIUsage(trialData) {
     const today = getTodayKey();
 
@@ -138,12 +152,15 @@ function updateTrialStatus() {
     const todayUsage = getTodayAIUsage(trialData);
 
     if (isTrialExpired(trialData)) {
-        trialStatus.textContent = "Free trial ended. Upgrade to Pro for continued AI document generation.";
+        trialStatus.textContent = "Free trial ended. Upgrade to Pro for $20/month to keep using OneToMany Contractors.";
+        trialStatus.classList.add("trial-ended");
         return;
     }
 
+    trialStatus.classList.remove("trial-ended");
+
     trialStatus.textContent =
-        `Free trial: ${daysLeft} day(s) left • AI used today: ${todayUsage}/${FREE_AI_PER_DAY}`;
+        `Free trial: ${daysLeft} day(s) left • Full access active • AI used today: ${todayUsage}/${FREE_AI_PER_DAY}`;
 }
 
 /* ==========================
@@ -367,6 +384,8 @@ ${businessName}`;
 
 if (generateButton) {
     generateButton.addEventListener("click", function () {
+        if (!requireActiveTrial()) return;
+
         const job = getFormData();
 
         if (!validateJob(job)) return;
@@ -382,6 +401,8 @@ if (generateButton) {
 
 if (saveJobButton) {
     saveJobButton.addEventListener("click", function () {
+        if (!requireActiveTrial()) return;
+
         const job = getFormData();
 
         if (!validateJob(job)) return;
@@ -406,6 +427,8 @@ if (saveJobButton) {
 
 if (clearFormBtn) {
     clearFormBtn.addEventListener("click", function () {
+        if (!requireActiveTrial()) return;
+
         const confirmClear = confirm("Clear all form fields and generated documents?");
 
         if (!confirmClear) return;
@@ -502,6 +525,8 @@ if (savedJobsList) {
         const deleteBtn = event.target.closest(".delete-job-btn");
 
         if (loadBtn) {
+            if (!requireActiveTrial()) return;
+
             const index = loadBtn.dataset.index;
             const job = savedJobs[index];
 
@@ -535,6 +560,8 @@ if (savedJobsList) {
         }
 
         if (deleteBtn) {
+            if (!requireActiveTrial()) return;
+
             const index = deleteBtn.dataset.index;
 
             savedJobs.splice(index, 1);
@@ -550,6 +577,8 @@ if (savedJobsList) {
 
 if (clearJobsBtn) {
     clearJobsBtn.addEventListener("click", function () {
+        if (!requireActiveTrial()) return;
+
         const confirmClear = confirm("Are you sure you want to clear all saved jobs?");
 
         if (!confirmClear) return;
@@ -570,6 +599,8 @@ const copyButtons = document.querySelectorAll(".copy-btn");
 
 copyButtons.forEach(function (button) {
     button.addEventListener("click", function () {
+        if (!requireActiveTrial()) return;
+
         const outputCard = button.closest(".output-card");
         const textArea = outputCard.querySelector("textarea");
 
@@ -792,6 +823,8 @@ const exportButtons = document.querySelectorAll(".export-btn");
 
 exportButtons.forEach(function (button) {
     button.addEventListener("click", function () {
+        if (!requireActiveTrial()) return;
+
         const outputCard = button.closest(".output-card");
         const textArea = outputCard.querySelector("textarea");
 
@@ -928,6 +961,8 @@ if (emailOutput) {
 
     if (emailButton) {
         emailButton.addEventListener("click", function () {
+            if (!requireActiveTrial()) return;
+
             const emailText = emailOutput.value;
             const customerEmail = document.getElementById("customerEmail").value.trim();
 
@@ -961,11 +996,11 @@ if (aiImproveBtn) {
 
             if (!trialCheck.allowed) {
                 if (trialCheck.reason === "expired") {
-                    showToast("Your free trial has ended. Upgrade to Pro to keep using AI.", "warning");
+                    showToast("Your free trial has ended. Upgrade to Pro for $20/month to continue using OneToMany Contractors.", "warning");
                 }
 
                 if (trialCheck.reason === "daily-limit") {
-                    showToast("Free trial limit reached. You get 1 AI generation per day. Upgrade to Pro for more.", "warning");
+                    showToast("Free trial AI limit reached. You get 1 AI generation per day. Upgrade to Pro for full access.", "warning");
                 }
 
                 return;
