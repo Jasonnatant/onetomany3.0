@@ -225,14 +225,14 @@
                             Improve with AI
                         </button>
 
-<button id="upgradeProBtn" class="btn btn-pro btn-large">
-    <i class="fas fa-crown"></i>
-    Upgrade to Pro
-</button>
+                        <button id="upgradeProBtn" class="btn btn-pro btn-large">
+                            <i class="fas fa-crown"></i>
+                            Upgrade to Pro
+                        </button>
 
-<p id="trialStatus" class="trial-status">
-    Free trial: 1 AI generation per day for 7 days.
-</p>
+                        <p id="trialStatus" class="trial-status">
+                            Free trial: 1 AI generation per day for 7 days.
+                        </p>
 
                         <button id="saveJobBtn" class="btn btn-secondary">
                             <i class="fas fa-floppy-disk"></i>
@@ -396,14 +396,46 @@
 
     </div>
 
-<footer class="app-footer">
-    <p>
-        OneToMany Contractors generates business document drafts for convenience only.
-        Users are responsible for reviewing all quotes, invoices, emails, SMS messages,
-        and service agreement drafts before sending, signing, or using them.
-    </p>
-</footer>
+    <footer class="app-footer">
+        <p>
+            OneToMany Contractors generates business document drafts for convenience only.
+            Users are responsible for reviewing all quotes, invoices, emails, SMS messages,
+            and service agreement drafts before sending, signing, or using them.
+        </p>
 
+        <p class="support-line">
+            Customer Support:
+            <a href="mailto:onetomanycontractors@gmail.com">
+                onetomanycontractors@gmail.com
+            </a>
+        </p>
+    </footer>
+
+    <div id="liabilityModal" class="modal-overlay">
+        <div class="modal-box">
+            <h2>Before You Use OneToMany Contractors</h2>
+
+            <p>
+                OneToMany Contractors generates business document drafts for convenience only.
+                The documents, messages, and PDFs created by this app are not legal, financial,
+                tax, or professional advice.
+            </p>
+
+            <p>
+                You are responsible for reviewing, editing, verifying, and approving all quotes,
+                invoices, service agreement drafts, emails, SMS messages, and PDFs before sending,
+                signing, or using them with customers.
+            </p>
+
+            <p>
+                By continuing, you agree that you are responsible for how you use the generated content.
+            </p>
+
+            <button id="acceptLiabilityBtn" class="btn btn-primary btn-large">
+                I Understand
+            </button>
+        </div>
+    </div>
 
     <div id="toast" class="toast"></div>
 

@@ -39,9 +39,20 @@ function getTodayKey() {
 }
 
 function getTrialData() {
-    let trialData = JSON.parse(localStorage.getItem("oneToManyTrial"));
+    let trialData;
 
-    if (!trialData) {
+    try {
+        trialData = JSON.parse(localStorage.getItem("oneToManyTrial"));
+    } catch (error) {
+        trialData = null;
+    }
+
+    if (
+        !trialData ||
+        !trialData.trialStartedAt ||
+        !trialData.aiUsageByDate ||
+        typeof trialData.aiUsageByDate !== "object"
+    ) {
         trialData = {
             trialStartedAt: new Date().toISOString(),
             aiUsageByDate: {}
@@ -73,6 +84,11 @@ function isTrialExpired(trialData) {
 
 function getTodayAIUsage(trialData) {
     const today = getTodayKey();
+
+    if (!trialData.aiUsageByDate) {
+        trialData.aiUsageByDate = {};
+    }
+
     return trialData.aiUsageByDate[today] || 0;
 }
 
@@ -131,19 +147,46 @@ function updateTrialStatus() {
 }
 
 /* ==========================
+   LIABILITY MODAL
+========================== */
+
+function setupLiabilityModal() {
+    const liabilityModal = document.getElementById("liabilityModal");
+    const acceptLiabilityBtn = document.getElementById("acceptLiabilityBtn");
+
+    if (!liabilityModal || !acceptLiabilityBtn) return;
+
+    const hasAcceptedLiability = localStorage.getItem("oneToManyLiabilityAccepted");
+
+    if (hasAcceptedLiability === "yes") {
+        liabilityModal.classList.add("hidden");
+    } else {
+        liabilityModal.classList.remove("hidden");
+    }
+
+    acceptLiabilityBtn.addEventListener("click", function () {
+        localStorage.setItem("oneToManyLiabilityAccepted", "yes");
+        liabilityModal.classList.add("hidden");
+        showToast("Thanks. You can now use OneToMany Contractors.", "success");
+    });
+}
+
+/* ==========================
    PRICE FORMATTER
 ========================== */
 
-estimatedPriceInput.addEventListener("input", function () {
-    const numbersOnly = estimatedPriceInput.value.replace(/[^0-9]/g, "");
+if (estimatedPriceInput) {
+    estimatedPriceInput.addEventListener("input", function () {
+        const numbersOnly = estimatedPriceInput.value.replace(/[^0-9]/g, "");
 
-    if (numbersOnly === "") {
-        estimatedPriceInput.value = "";
-        return;
-    }
+        if (numbersOnly === "") {
+            estimatedPriceInput.value = "";
+            return;
+        }
 
-    estimatedPriceInput.value = "$" + Number(numbersOnly).toLocaleString();
-});
+        estimatedPriceInput.value = "$" + Number(numbersOnly).toLocaleString();
+    });
+}
 
 function getCleanPrice() {
     const numbersOnly = estimatedPriceInput.value.replace(/[^0-9]/g, "");
@@ -221,8 +264,8 @@ Business: ${businessName}
 
 Customer Information:
 Customer: ${job.customerName}
-Email: ${job.customerEmail}
-Phone: ${job.customerPhone}
+Email: ${job.customerEmail || "Not provided"}
+Phone: ${job.customerPhone || "Not provided"}
 
 Project Information:
 Project Type: ${job.projectType}
@@ -245,8 +288,8 @@ Business: ${businessName}
 
 Bill To:
 Customer: ${job.customerName}
-Email: ${job.customerEmail}
-Phone: ${job.customerPhone}
+Email: ${job.customerEmail || "Not provided"}
+Phone: ${job.customerPhone || "Not provided"}
 
 Service Details:
 Service: ${job.projectType}
@@ -266,8 +309,8 @@ Business: ${businessName}
 
 Customer:
 ${job.customerName}
-${job.customerEmail}
-${job.customerPhone}
+${job.customerEmail || "Not provided"}
+${job.customerPhone || "Not provided"}
 
 Project:
 ${job.projectType}
@@ -322,80 +365,88 @@ ${businessName}`;
 `Hi ${job.customerName}, this is ${businessName}. We prepared your ${job.projectType} estimate for ${job.estimatedPrice}. Let us know if you have any questions or would like to move forward.`;
 }
 
-generateButton.addEventListener("click", function () {
-    const job = getFormData();
+if (generateButton) {
+    generateButton.addEventListener("click", function () {
+        const job = getFormData();
 
-    if (!validateJob(job)) return;
+        if (!validateJob(job)) return;
 
-    generateDocuments(job);
-    showToast("✅ Documents generated.", "success");
-});
+        generateDocuments(job);
+        showToast("✅ Documents generated.", "success");
+    });
+}
 
 /* ==========================
    SAVE JOB
 ========================== */
 
-saveJobButton.addEventListener("click", function () {
-    const job = getFormData();
+if (saveJobButton) {
+    saveJobButton.addEventListener("click", function () {
+        const job = getFormData();
 
-    if (!validateJob(job)) return;
+        if (!validateJob(job)) return;
 
-    job.savedAt = new Date().toLocaleString();
+        job.savedAt = new Date().toLocaleString();
 
-    const savedJobs = JSON.parse(localStorage.getItem("savedJobs")) || [];
+        const savedJobs = JSON.parse(localStorage.getItem("savedJobs")) || [];
 
-    savedJobs.push(job);
+        savedJobs.push(job);
 
-    localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
+        localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
 
-    displaySavedJobs();
+        displaySavedJobs();
 
-    showToast("✅ Job saved successfully!", "success");
-});
+        showToast("✅ Job saved successfully!", "success");
+    });
+}
 
 /* ==========================
    CLEAR FORM
 ========================== */
 
-clearFormBtn.addEventListener("click", function () {
-    const confirmClear = confirm("Clear all form fields and generated documents?");
+if (clearFormBtn) {
+    clearFormBtn.addEventListener("click", function () {
+        const confirmClear = confirm("Clear all form fields and generated documents?");
 
-    if (!confirmClear) return;
+        if (!confirmClear) return;
 
-    if (document.getElementById("businessName")) {
-        document.getElementById("businessName").value = "";
-    }
+        if (document.getElementById("businessName")) {
+            document.getElementById("businessName").value = "";
+        }
 
-    if (document.getElementById("jobStatus")) {
-        document.getElementById("jobStatus").value = "Lead";
-    }
+        if (document.getElementById("jobStatus")) {
+            document.getElementById("jobStatus").value = "Lead";
+        }
 
-    if (document.getElementById("followUpDate")) {
-        document.getElementById("followUpDate").value = "";
-    }
+        if (document.getElementById("followUpDate")) {
+            document.getElementById("followUpDate").value = "";
+        }
 
-    document.getElementById("customerName").value = "";
-    document.getElementById("customerEmail").value = "";
-    document.getElementById("customerPhone").value = "";
-    document.getElementById("projectType").selectedIndex = 0;
-    document.getElementById("estimatedPrice").value = "";
-    document.getElementById("timeline").value = "";
-    document.getElementById("projectNotes").value = "";
+        document.getElementById("customerName").value = "";
+        document.getElementById("customerEmail").value = "";
+        document.getElementById("customerPhone").value = "";
+        document.getElementById("projectType").selectedIndex = 0;
+        document.getElementById("estimatedPrice").value = "";
+        document.getElementById("timeline").value = "";
+        document.getElementById("projectNotes").value = "";
 
-    document.getElementById("quoteOutput").value = "";
-    document.getElementById("invoiceOutput").value = "";
-    document.getElementById("agreementOutput").value = "";
-    document.getElementById("emailOutput").value = "";
-    document.getElementById("smsOutput").value = "";
+        document.getElementById("quoteOutput").value = "";
+        document.getElementById("invoiceOutput").value = "";
+        document.getElementById("agreementOutput").value = "";
+        document.getElementById("emailOutput").value = "";
+        document.getElementById("smsOutput").value = "";
 
-    showToast("🧹 Form cleared!", "success");
-});
+        showToast("🧹 Form cleared!", "success");
+    });
+}
 
 /* ==========================
    SAVED JOBS DISPLAY
 ========================== */
 
 function displaySavedJobs() {
+    if (!savedJobsList) return;
+
     const savedJobs = JSON.parse(localStorage.getItem("savedJobs")) || [];
 
     if (savedJobs.length === 0) {
@@ -443,69 +494,73 @@ function displaySavedJobs() {
     });
 }
 
-savedJobsList.addEventListener("click", function (event) {
-    const savedJobs = JSON.parse(localStorage.getItem("savedJobs")) || [];
+if (savedJobsList) {
+    savedJobsList.addEventListener("click", function (event) {
+        const savedJobs = JSON.parse(localStorage.getItem("savedJobs")) || [];
 
-    const loadBtn = event.target.closest(".load-job-btn");
-    const deleteBtn = event.target.closest(".delete-job-btn");
+        const loadBtn = event.target.closest(".load-job-btn");
+        const deleteBtn = event.target.closest(".delete-job-btn");
 
-    if (loadBtn) {
-        const index = loadBtn.dataset.index;
-        const job = savedJobs[index];
+        if (loadBtn) {
+            const index = loadBtn.dataset.index;
+            const job = savedJobs[index];
 
-        if (!job) {
-            showToast("Could not load this job.", "error");
-            return;
+            if (!job) {
+                showToast("Could not load this job.", "error");
+                return;
+            }
+
+            if (document.getElementById("businessName")) {
+                document.getElementById("businessName").value = job.businessName || "";
+            }
+
+            if (document.getElementById("jobStatus")) {
+                document.getElementById("jobStatus").value = job.jobStatus || "Lead";
+            }
+
+            if (document.getElementById("followUpDate")) {
+                document.getElementById("followUpDate").value = job.followUpDate || "";
+            }
+
+            document.getElementById("customerName").value = job.customerName || "";
+            document.getElementById("customerEmail").value = job.customerEmail || "";
+            document.getElementById("customerPhone").value = job.customerPhone || "";
+            document.getElementById("projectType").value = job.projectType || "Deck Repair";
+            document.getElementById("estimatedPrice").value = job.estimatedPrice || "";
+            document.getElementById("timeline").value = job.timeline || "";
+            document.getElementById("projectNotes").value = job.projectNotes || "";
+
+            generateDocuments(job);
+            showToast("📂 Saved job loaded.", "success");
         }
 
-        if (document.getElementById("businessName")) {
-            document.getElementById("businessName").value = job.businessName || "";
+        if (deleteBtn) {
+            const index = deleteBtn.dataset.index;
+
+            savedJobs.splice(index, 1);
+
+            localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
+
+            displaySavedJobs();
+
+            showToast("🗑️ Saved job deleted.", "success");
         }
+    });
+}
 
-        if (document.getElementById("jobStatus")) {
-            document.getElementById("jobStatus").value = job.jobStatus || "Lead";
-        }
+if (clearJobsBtn) {
+    clearJobsBtn.addEventListener("click", function () {
+        const confirmClear = confirm("Are you sure you want to clear all saved jobs?");
 
-        if (document.getElementById("followUpDate")) {
-            document.getElementById("followUpDate").value = job.followUpDate || "";
-        }
+        if (!confirmClear) return;
 
-        document.getElementById("customerName").value = job.customerName || "";
-        document.getElementById("customerEmail").value = job.customerEmail || "";
-        document.getElementById("customerPhone").value = job.customerPhone || "";
-        document.getElementById("projectType").value = job.projectType || "Deck Repair";
-        document.getElementById("estimatedPrice").value = job.estimatedPrice || "";
-        document.getElementById("timeline").value = job.timeline || "";
-        document.getElementById("projectNotes").value = job.projectNotes || "";
-
-        generateDocuments(job);
-        showToast("📂 Saved job loaded.", "success");
-    }
-
-    if (deleteBtn) {
-        const index = deleteBtn.dataset.index;
-
-        savedJobs.splice(index, 1);
-
-        localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
+        localStorage.removeItem("savedJobs");
 
         displaySavedJobs();
 
-        showToast("🗑️ Saved job deleted.", "success");
-    }
-});
-
-clearJobsBtn.addEventListener("click", function () {
-    const confirmClear = confirm("Are you sure you want to clear all saved jobs?");
-
-    if (!confirmClear) return;
-
-    localStorage.removeItem("savedJobs");
-
-    displaySavedJobs();
-
-    showToast("🗑️ All saved jobs cleared.", "success");
-});
+        showToast("🗑️ All saved jobs cleared.", "success");
+    });
+}
 
 /* ==========================
    COPY BUTTONS
@@ -537,8 +592,201 @@ copyButtons.forEach(function (button) {
 });
 
 /* ==========================
-   PDF EXPORT
+   CLEAN PDF EXPORT
 ========================== */
+
+function cleanPdfText(text) {
+    return String(text || "")
+        .replace(/[^\x00-\x7F]/g, "")
+        .replace(/\r/g, "")
+        .trim();
+}
+
+function addPdfFooter(doc, pageNumber) {
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.2);
+    doc.line(18, 278, 192, 278);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+
+    doc.text("Generated by OneToMany Contractors", 18, 286);
+    doc.text(`Page ${pageNumber}`, 192, 286, { align: "right" });
+}
+
+function addNewPageIfNeeded(doc, currentY, neededSpace, pageNumberObj) {
+    if (currentY + neededSpace > 270) {
+        addPdfFooter(doc, pageNumberObj.value);
+        doc.addPage();
+        pageNumberObj.value += 1;
+        return 24;
+    }
+
+    return currentY;
+}
+
+function drawPdfHeader(doc, businessName, documentTitle) {
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 36, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text(businessName, 18, 16);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(203, 213, 225);
+    doc.text("Generated: " + new Date().toLocaleDateString(), 18, 25);
+
+    doc.setFillColor(34, 197, 94);
+    doc.roundedRect(145, 10, 47, 14, 3, 3, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(documentTitle.toUpperCase(), 168.5, 19, { align: "center" });
+}
+
+function drawInfoBox(doc, title, rows, x, y, width) {
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(x, y, width, 12 + rows.length * 8, 3, 3, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(title, x + 5, y + 8);
+
+    let rowY = y + 17;
+
+    rows.forEach(function (row) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(row.label + ":", x + 5, rowY);
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(15, 23, 42);
+        doc.text(String(row.value || "Not provided"), x + 35, rowY);
+
+        rowY += 8;
+    });
+
+    return y + 16 + rows.length * 8;
+}
+
+function drawSectionTitle(doc, title, y) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(22, 101, 52);
+    doc.text(title.toUpperCase(), 18, y);
+
+    doc.setDrawColor(34, 197, 94);
+    doc.setLineWidth(0.4);
+    doc.line(18, y + 3, 192, y + 3);
+
+    return y + 11;
+}
+
+function drawParagraph(doc, text, y, pageNumberObj) {
+    const cleaned = cleanPdfText(text);
+    const lines = doc.splitTextToSize(cleaned, 174);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(51, 65, 85);
+
+    lines.forEach(function (line) {
+        y = addNewPageIfNeeded(doc, y, 8, pageNumberObj);
+        doc.text(line, 18, y);
+        y += 6.5;
+    });
+
+    return y + 4;
+}
+
+function parseSections(content) {
+    const lines = cleanPdfText(content)
+        .split("\n")
+        .map(function (line) {
+            return line.trim();
+        })
+        .filter(function (line) {
+            return line.length > 0;
+        });
+
+    const sections = [];
+    let currentSection = {
+        title: "Details",
+        body: []
+    };
+
+    const sectionNames = [
+        "CUSTOMER INFORMATION",
+        "PROJECT INFORMATION",
+        "SCOPE OF WORK",
+        "QUOTE TERMS",
+        "NEXT STEP",
+        "BILL TO",
+        "SERVICE DETAILS",
+        "DESCRIPTION",
+        "PAYMENT TERMS",
+        "CUSTOMER",
+        "PROJECT",
+        "ESTIMATED PRICE",
+        "ESTIMATED TIMELINE",
+        "CHANGES TO WORK",
+        "CUSTOMER RESPONSIBILITIES",
+        "CONTRACTOR RESPONSIBILITIES",
+        "SIGNATURES"
+    ];
+
+    lines.forEach(function (line) {
+        const upper = line.replace(/:$/g, "").toUpperCase();
+
+        if (
+            upper === "QUOTE" ||
+            upper === "INVOICE" ||
+            upper === "SERVICE AGREEMENT DRAFT" ||
+            upper === "SERVICE AGREEMENT"
+        ) {
+            return;
+        }
+
+        if (sectionNames.includes(upper)) {
+            if (currentSection.body.length > 0) {
+                sections.push(currentSection);
+            }
+
+            currentSection = {
+                title: upper,
+                body: []
+            };
+        } else {
+            currentSection.body.push(line);
+        }
+    });
+
+    if (currentSection.body.length > 0) {
+        sections.push(currentSection);
+    }
+
+    return sections;
+}
+
+function getDocumentTitle(rawTitle) {
+    const lower = rawTitle.toLowerCase();
+
+    if (lower.includes("quote")) return "Quote";
+    if (lower.includes("invoice")) return "Invoice";
+    if (lower.includes("agreement")) return "Agreement";
+    if (lower.includes("email")) return "Email";
+    if (lower.includes("sms")) return "SMS";
+
+    return rawTitle;
+}
 
 const exportButtons = document.querySelectorAll(".export-btn");
 
@@ -555,177 +803,111 @@ exportButtons.forEach(function (button) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
-        const title = outputCard
+        const rawTitle = outputCard
             .querySelector("h3")
             .textContent
             .replace(/[^\x00-\x7F]/g, "")
             .trim();
 
+        const documentTitle = getDocumentTitle(rawTitle);
+
         const businessNameInput = document.getElementById("businessName")
             ? document.getElementById("businessName").value.trim()
             : "";
 
-        const pdfBusinessName = businessNameInput || "Your Company Name";
+        const businessName = businessNameInput || "Your Company Name";
+        const job = getFormData();
+        const pageNumberObj = { value: 1 };
 
-        let content = textArea.value
-            .replace(/[{}"]/g, "")
-            .replace(/_/g, " ")
-            .replace(/,/g, "")
-            .replace(/[^\x00-\x7F]/g, "");
+        drawPdfHeader(doc, businessName, documentTitle);
 
-        const isAgreementPDF = title.toLowerCase().includes("agreement");
+        let y = 48;
 
-        doc.setFillColor(0, 0, 0);
-        doc.rect(0, 0, 210, 35, "F");
+        drawInfoBox(
+            doc,
+            "Customer",
+            [
+                { label: "Name", value: job.customerName },
+                { label: "Email", value: job.customerEmail || "Not provided" },
+                { label: "Phone", value: job.customerPhone || "Not provided" }
+            ],
+            18,
+            y,
+            82
+        );
 
-        doc.setTextColor(255, 255, 255);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(20);
-        doc.text(pdfBusinessName, 105, 18, { align: "center" });
+        drawInfoBox(
+            doc,
+            "Project",
+            [
+                { label: "Type", value: job.projectType },
+                { label: "Price", value: job.estimatedPrice },
+                { label: "Timeline", value: job.timeline }
+            ],
+            110,
+            y,
+            82
+        );
 
-        doc.setTextColor(100, 116, 139);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.text("Generated: " + new Date().toLocaleDateString(), 20, 48);
+        y += 48;
 
-        doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.7);
-        doc.line(20, 54, 190, 54);
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(16);
-        doc.setTextColor(15, 23, 42);
-
-        if (title.toLowerCase().includes("quote")) {
-            doc.text("QUOTE:", 20, 68);
-        } else if (title.toLowerCase().includes("invoice")) {
-            doc.text("INVOICE:", 20, 68);
-        } else if (title.toLowerCase().includes("agreement")) {
-            doc.text("SERVICE AGREEMENT:", 20, 68);
-        } else {
-            doc.text(title.toUpperCase() + ":", 20, 68);
-        }
-
-        let y = 82;
+        const isAgreementPDF = documentTitle.toLowerCase().includes("agreement");
 
         if (isAgreementPDF) {
-            doc.setFillColor(254, 242, 242);
-            doc.rect(20, y - 8, 170, 30, "F");
+            y = addNewPageIfNeeded(doc, y, 28, pageNumberObj);
 
-            doc.setTextColor(153, 27, 27);
+            doc.setFillColor(254, 242, 242);
+            doc.setDrawColor(252, 165, 165);
+            doc.roundedRect(18, y, 174, 25, 3, 3, "FD");
+
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(10);
-            doc.text("IMPORTANT: SERVICE AGREEMENT DRAFT ONLY", 25, y);
+            doc.setFontSize(9.5);
+            doc.setTextColor(153, 27, 27);
+            doc.text("IMPORTANT: SERVICE AGREEMENT DRAFT ONLY", 23, y + 8);
 
             doc.setFont("helvetica", "normal");
-            doc.setFontSize(8.5);
-
-            const disclaimerLines = doc.splitTextToSize(
-                "This document is not legal advice, does not create an attorney-client relationship, and should be reviewed by the user and/or a qualified professional before use.",
-                160
+            doc.setFontSize(8);
+            const warningLines = doc.splitTextToSize(
+                "This document is not legal advice. Review this draft carefully and consider having a qualified professional review it before use.",
+                164
             );
 
-            doc.text(disclaimerLines, 25, y + 8);
-
-            y += 38;
+            doc.text(warningLines, 23, y + 15);
+            y += 35;
         }
 
-        const rawLines = content
-            .split("\n")
-            .map(function (line) {
-                return line.trim();
-            })
-            .filter(function (line) {
-                return line !== "";
-            });
+        const sections = parseSections(textArea.value);
 
-        rawLines.forEach(function (line) {
-            if (y > 265) {
-                doc.addPage();
-                y = 25;
-            }
+        sections.forEach(function (section) {
+            y = addNewPageIfNeeded(doc, y, 20, pageNumberObj);
+            y = drawSectionTitle(doc, section.title, y);
 
-            const lowerLine = line.toLowerCase();
-
-            const isSectionTitle =
-                lowerLine === "quote" ||
-                lowerLine === "invoice" ||
-                lowerLine === "service agreement" ||
-                lowerLine === "service agreement draft" ||
-                lowerLine === "scope of work" ||
-                lowerLine === "payment terms" ||
-                lowerLine === "changes to work" ||
-                lowerLine === "signatures" ||
-                lowerLine === "quote terms" ||
-                lowerLine === "next step" ||
-                lowerLine === "customer responsibilities" ||
-                lowerLine === "contractor responsibilities" ||
-                lowerLine === "terms" ||
-                lowerLine === "notes";
-
-            const isLabel =
-                lowerLine.startsWith("business") ||
-                lowerLine.startsWith("customer") ||
-                lowerLine.startsWith("email") ||
-                lowerLine.startsWith("phone") ||
-                lowerLine.startsWith("project") ||
-                lowerLine.startsWith("estimated") ||
-                lowerLine.startsWith("amount") ||
-                lowerLine.startsWith("timeline") ||
-                lowerLine.startsWith("service");
-
-            if (isSectionTitle) {
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(14);
-                doc.setTextColor(15, 23, 42);
-
-                if (
-                    (lowerLine === "quote" && title.toLowerCase().includes("quote")) ||
-                    (lowerLine === "invoice" && title.toLowerCase().includes("invoice")) ||
-                    ((lowerLine === "service agreement" || lowerLine === "service agreement draft") && title.toLowerCase().includes("agreement"))
-                ) {
-                    return;
-                }
-
-                doc.text(line.toUpperCase() + ":", 20, y);
-                y += 10;
-                return;
-            }
-
-            if (isLabel) {
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(11);
-                doc.setTextColor(17, 24, 39);
-            } else {
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(10.5);
-                doc.setTextColor(51, 65, 85);
-            }
-
-            const wrappedLines = doc.splitTextToSize(line, 165);
-
-            wrappedLines.forEach(function (wrappedLine) {
-                if (y > 265) {
-                    doc.addPage();
-                    y = 25;
-                }
-
-                doc.text(wrappedLine, 20, y);
-                y += 7;
-            });
-
-            y += 3;
+            const bodyText = section.body.join("\n");
+            y = drawParagraph(doc, bodyText, y, pageNumberObj);
         });
 
+        y = addNewPageIfNeeded(doc, y, 24, pageNumberObj);
+
+        doc.setFillColor(248, 250, 252);
         doc.setDrawColor(226, 232, 240);
-        doc.line(20, 276, 190, 276);
+        doc.roundedRect(18, y, 174, 18, 3, 3, "FD");
 
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
+        doc.setFontSize(8.5);
         doc.setTextColor(100, 116, 139);
-        doc.text("Generated by OneToMany Contractors", 20, 285);
 
-        const fileName = title.replace(/[^a-z0-9]/gi, "_") + ".pdf";
+        const disclaimerLines = doc.splitTextToSize(
+            "Draft generated for convenience only. User is responsible for reviewing all content before sending, signing, or using it.",
+            164
+        );
+
+        doc.text(disclaimerLines, 23, y + 7);
+
+        addPdfFooter(doc, pageNumberObj.value);
+
+        const safeBusinessName = businessName.replace(/[^a-z0-9]/gi, "_");
+        const safeTitle = documentTitle.replace(/[^a-z0-9]/gi, "_");
+        const fileName = `${safeBusinessName}_${safeTitle}.pdf`;
 
         doc.save(fileName);
 
@@ -876,5 +1058,10 @@ if (upgradeProBtn) {
     });
 }
 
+/* ==========================
+   INITIALIZE APP
+========================== */
+
+setupLiabilityModal();
 updateTrialStatus();
 displaySavedJobs();
