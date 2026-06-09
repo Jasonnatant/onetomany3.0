@@ -2,113 +2,382 @@
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     margin: 0;
     font-family: Arial, Helvetica, sans-serif;
-    background: #0f172a;
+    background:
+        radial-gradient(circle at top left, rgba(34, 197, 94, 0.12), transparent 32%),
+        radial-gradient(circle at top right, rgba(251, 191, 36, 0.08), transparent 28%),
+        #0f172a;
     color: #f8fafc;
 }
 
-.container {
-    width: 92%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 25px 0;
+a {
+    color: inherit;
+}
+
+/* ==========================
+   HERO / LANDING HEADER
+========================== */
+
+.app-container {
+    width: 100%;
 }
 
 .hero {
-    text-align: center;
-    padding: 40px 20px 30px;
-    background: radial-gradient(circle at top, #14532d, #020617 70%);
-    border-bottom: 1px solid rgba(34, 197, 94, 0.3);
+    padding: 24px 20px 58px;
+    background:
+        radial-gradient(circle at 20% 0%, rgba(34, 197, 94, 0.28), transparent 32%),
+        linear-gradient(135deg, #020617 0%, #0f172a 55%, #052e16 100%);
+    border-bottom: 1px solid rgba(34, 197, 94, 0.28);
+    position: relative;
+    overflow: hidden;
 }
 
-.logo-icon,
-.app-icon {
-    width: 90px;
-    height: 90px;
-    margin: 0 auto 20px;
-    border-radius: 24px;
-    background: linear-gradient(135deg, #22c55e, #16a34a);
+.hero-content {
+    width: min(1200px, 94%);
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+}
+
+.top-nav {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 42px;
-    box-shadow: 0 0 30px rgba(34, 197, 94, 0.45);
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 58px;
 }
 
-.app-logo {
-    width: 360px;
-    height: 360px;
+.brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.nav-logo {
+    width: 54px;
+    height: 54px;
     object-fit: contain;
     display: block;
-    margin: 0 auto 30px auto;
-    filter: drop-shadow(0 0 18px rgba(34, 197, 94, 0.45));
+    filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.4));
 }
 
-.hero h1 {
-    margin: 0;
-    font-size: 3.2rem;
+.logo-fallback {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #111827;
+    font-size: 16px;
     font-weight: 900;
-    color: #22c55e;
-    text-shadow: 0 0 25px rgba(34, 197, 94, 0.45);
+    box-shadow: 0 0 24px rgba(34, 197, 94, 0.4);
 }
 
-.hero h2 {
-    margin: 8px 0 12px;
-    font-size: 1.6rem;
+.brand-name {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 900;
+    color: #f8fafc;
+}
+
+.brand-subtitle {
+    margin: 3px 0 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.nav-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    padding: 12px 18px;
+    border-radius: 999px;
+    font-weight: 900;
+    color: #111827;
+    background: linear-gradient(135deg, #22c55e, #fbbf24);
+    box-shadow: 0 12px 30px rgba(34, 197, 94, 0.22);
+}
+
+.hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+    gap: 36px;
+    align-items: center;
+}
+
+.hero-copy {
+    max-width: 760px;
+}
+
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.32);
+    color: #86efac;
+    font-size: 0.83rem;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.hero-title {
+    margin: 0;
+    font-size: clamp(2.35rem, 5vw, 4.85rem);
+    line-height: 0.95;
+    letter-spacing: -0.06em;
+    font-weight: 950;
+    color: #f8fafc;
+    text-shadow: 0 0 28px rgba(34, 197, 94, 0.18);
+}
+
+.hero-tagline {
+    max-width: 690px;
+    margin: 22px 0 0;
+    font-size: clamp(1.05rem, 2vw, 1.35rem);
+    line-height: 1.55;
+    font-weight: 700;
+    color: #cbd5e1;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 30px;
+}
+
+.hero-btn {
+    width: auto !important;
+    text-decoration: none;
+}
+
+.btn-ghost {
+    background: rgba(15, 23, 42, 0.72);
+    color: #f8fafc;
+    border: 1px solid rgba(148, 163, 184, 0.32);
+}
+
+.trust-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 24px;
+    color: #cbd5e1;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.trust-row span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.trust-row i {
+    color: #22c55e;
+}
+
+.hero-preview-card {
+    background:
+        linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.96));
+    border: 1px solid rgba(34, 197, 94, 0.28);
+    border-radius: 28px;
+    padding: 24px;
+    box-shadow:
+        0 28px 80px rgba(0, 0, 0, 0.4),
+        0 0 45px rgba(34, 197, 94, 0.12);
+}
+
+.preview-topline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(2, 6, 23, 0.72);
+    color: #f8fafc;
+    font-weight: 900;
+}
+
+.preview-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: #22c55e;
+    box-shadow: 0 0 18px rgba(34, 197, 94, 0.75);
+}
+
+.preview-arrow {
+    display: flex;
+    justify-content: center;
+    margin: 18px 0;
     color: #fbbf24;
 }
 
-.hero p,
-.hero-tagline {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #fde68a;
-}
-
-.info-strip {
-    background: rgba(15, 23, 42, 0.9);
-    border-top: 1px solid rgba(34, 197, 94, 0.2);
-    border-bottom: 1px solid rgba(34, 197, 94, 0.2);
-    padding: 20px 0;
-}
-
-.info-strip .container {
+.preview-output-list {
     display: grid;
-    grid-template-columns: 220px 1fr;
-    gap: 30px;
+    gap: 10px;
+}
+
+.preview-output-list div {
+    display: flex;
     align-items: center;
-    padding: 0;
+    gap: 11px;
+    padding: 13px 14px;
+    border-radius: 15px;
+    background: rgba(15, 23, 42, 0.82);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    color: #e2e8f0;
+    font-weight: 850;
 }
 
-.info-strip h2 {
+.preview-output-list i {
+    width: 20px;
     color: #22c55e;
-    font-size: 1.8rem;
-    margin: 0;
 }
 
-.info-strip p {
-    color: #fed7aa;
-    font-size: 1.05rem;
-    line-height: 1.7;
-    font-weight: 700;
-    margin: 0;
+/* ==========================
+   HOW IT WORKS
+========================== */
+
+.how-it-works-section {
+    width: min(1200px, 94%);
+    margin: -26px auto 32px;
+    padding: 30px;
+    border-radius: 28px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    position: relative;
+    z-index: 3;
 }
+
+.section-heading {
+    text-align: center;
+    max-width: 760px;
+    margin: 0 auto 24px;
+}
+
+.section-heading h2 {
+    margin: 0;
+    color: #f8fafc;
+    font-size: clamp(1.7rem, 3vw, 2.5rem);
+    letter-spacing: -0.035em;
+}
+
+.section-heading p:not(.eyebrow) {
+    margin: 14px 0 0;
+    color: #cbd5e1;
+    line-height: 1.65;
+    font-weight: 700;
+}
+
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.step-card {
+    background: rgba(30, 41, 59, 0.82);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 22px;
+    padding: 22px;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #22c55e, #fbbf24);
+    color: #111827;
+    font-weight: 950;
+    margin-bottom: 16px;
+}
+
+.step-card h3 {
+    margin: 0 0 10px;
+    color: #22c55e;
+    font-size: 1.2rem;
+}
+
+.step-card p {
+    margin: 0;
+    color: #cbd5e1;
+    line-height: 1.6;
+    font-weight: 700;
+}
+
+/* ==========================
+   QUICK START
+========================== */
 
 .instructions-card {
+    width: min(1200px, 94%);
+    margin: 0 auto 30px auto;
     text-align: center;
+    background: rgba(30, 41, 59, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 22px;
+    padding: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
-.app-layout {
+.instructions-card h3 {
+    color: #22c55e;
+    font-size: 1.5rem;
+    margin: 0 0 12px;
+}
+
+.instructions-card p {
+    max-width: 850px;
+    margin: 0 auto;
+    line-height: 1.6;
+    color: #fed7aa;
+    font-weight: 700;
+}
+
+/* ==========================
+   MAIN APP LAYOUT
+========================== */
+
+.main-grid {
+    width: min(1200px, 94%);
+    margin: 40px auto;
     display: grid;
-    grid-template-columns: 340px 1fr;
-    gap: 40px;
+    grid-template-columns: 380px 1fr;
+    gap: 28px;
     align-items: start;
 }
 
-.card,
-.form-card,
+.sidebar-panel {
+    width: 100%;
+}
+
+.outputs-container {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px;
+}
+
 .input-card,
 .output-card,
 .saved-jobs-card {
@@ -119,17 +388,14 @@ body {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
-.form-card,
 .input-card {
     position: sticky;
     top: 20px;
 }
 
-.form-card h2,
-.input-card h2,
+.card-title,
 .output-card h3,
-.saved-jobs-card h2,
-.card-title {
+.saved-jobs-card h2 {
     color: #22c55e;
     font-size: 1.7rem;
     margin: 0 0 24px;
@@ -172,29 +438,35 @@ textarea {
     line-height: 1.5;
 }
 
-.outputs-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 35px;
-}
-
 .output-card textarea {
-    min-height: 160px;
+    width: 100%;
+    min-height: 140px;
+    max-height: 230px;
+    overflow-y: auto;
     font-family: Consolas, monospace;
     font-size: 0.95rem;
     color: #fde68a;
 }
 
-.action-row,
-.saved-job-actions,
-.job-item-actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 14px;
+#quoteOutput,
+#invoiceOutput {
+    min-height: 120px;
+    max-height: 180px;
 }
 
-button {
+#agreementOutput,
+#emailOutput,
+#smsOutput {
+    min-height: 140px;
+    max-height: 220px;
+}
+
+/* ==========================
+   BUTTONS
+========================== */
+
+button,
+.btn {
     border: none;
     border-radius: 14px;
     padding: 14px 22px;
@@ -202,15 +474,20 @@ button {
     font-weight: 900;
     cursor: pointer;
     transition: 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
 }
 
-button:hover {
+button:hover,
+.btn:hover {
     transform: translateY(-2px);
     opacity: 0.95;
 }
 
-#generateAllBtn,
-.generate-btn {
+.btn-primary,
+#generateAllBtn {
     width: 100%;
     margin-top: 22px;
     background: linear-gradient(135deg, #22c55e, #16a34a);
@@ -218,7 +495,8 @@ button:hover {
     box-shadow: 0 10px 28px rgba(34, 197, 94, 0.25);
 }
 
-#aiImproveBtn {
+#aiImproveBtn,
+.btn-ai {
     width: 100%;
     margin-top: 14px;
     background: linear-gradient(135deg, #581c87, #0f172a);
@@ -226,7 +504,17 @@ button:hover {
     box-shadow: 0 10px 28px rgba(88, 28, 135, 0.3);
 }
 
-#saveJobBtn {
+#upgradeProBtn,
+.btn-pro {
+    width: 100%;
+    margin-top: 14px;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #111827;
+    box-shadow: 0 10px 28px rgba(251, 191, 36, 0.25);
+}
+
+#saveJobBtn,
+.btn-secondary {
     width: 100%;
     margin-top: 14px;
     background: #111827;
@@ -234,11 +522,16 @@ button:hover {
 }
 
 #clearFormBtn,
-#clearJobsBtn {
+#clearJobsBtn,
+.btn-danger {
     width: 100%;
     margin-top: 14px;
     background: linear-gradient(135deg, #ef4444, #dc2626);
     color: #fef3c7;
+}
+
+.btn-full {
+    width: 100%;
 }
 
 .copy-btn {
@@ -266,11 +559,31 @@ button:hover {
     color: white;
 }
 
+.sidebar-panel .button-group button,
+.sidebar-panel #clearJobsBtn {
+    width: 100%;
+}
+
+.action-row,
+.job-item-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+.action-row button {
+    width: auto;
+}
+
+/* ==========================
+   SAVED JOBS
+========================== */
+
 .saved-jobs-card {
     margin-top: 30px;
 }
 
-.saved-job,
 .job-item {
     background: rgba(15, 23, 42, 0.8);
     border: 1px solid rgba(148, 163, 184, 0.2);
@@ -279,7 +592,6 @@ button:hover {
     margin-bottom: 16px;
 }
 
-.saved-job h4,
 .job-item-header {
     margin: 0 0 10px;
     color: #fbbf24;
@@ -287,14 +599,12 @@ button:hover {
     font-weight: 900;
 }
 
-.saved-job p,
 .job-item-details {
     margin: 6px 0;
     color: #e2e8f0;
     line-height: 1.6;
 }
 
-.saved-job small,
 .job-item-details small {
     display: block;
     margin-top: 8px;
@@ -306,150 +616,9 @@ button:hover {
     font-weight: 700;
 }
 
-/* Final layout cleanup */
-
-.main-grid {
-    width: min(1200px, 94%);
-    margin: 40px auto;
-    display: grid;
-    grid-template-columns: 380px 1fr;
-    gap: 28px;
-    align-items: start;
-}
-
-.sidebar-panel {
-    width: 100%;
-}
-
-.outputs-container {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 22px;
-}
-
-.input-card,
-.saved-jobs-card,
-.output-card,
-.instructions-card {
-    max-width: 100%;
-}
-
-.output-card textarea {
-    width: 100%;
-    min-height: 140px;
-    max-height: 230px;
-    overflow-y: auto;
-}
-
-#quoteOutput,
-#invoiceOutput {
-    min-height: 120px;
-    max-height: 180px;
-}
-
-#agreementOutput,
-#emailOutput,
-#smsOutput {
-    min-height: 140px;
-    max-height: 220px;
-}
-
-.action-row {
-    display: flex;
-    gap: 12px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-}
-
-.action-row button {
-    width: auto;
-}
-
-.instructions-card {
-    width: min(1200px, 94%);
-    margin: 0 auto 30px auto;
-    text-align: center;
-    background: rgba(30, 41, 59, 0.92);
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 22px;
-    padding: 20px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-}
-
-.instructions-card h3 {
-    color: #22c55e;
-    font-size: 1.5rem;
-    margin: 0 0 12px;
-}
-
-.instructions-card p {
-    max-width: 850px;
-    margin: 0 auto;
-    line-height: 1.6;
-    color: #fed7aa;
-    font-weight: 700;
-}
-
-/* Make buttons in the left panel full width only */
-
-.sidebar-panel .button-group button,
-.sidebar-panel #clearJobsBtn {
-    width: 100%;
-}
-
-/* Fix: allow form fields to be clickable/typeable */
-
-.main-grid,
-.sidebar-panel,
-.input-card,
-.form-group,
-input,
-select,
-textarea,
-button {
-    position: relative;
-    z-index: 10;
-}
-
-.hero,
-.instructions-card {
-    position: relative;
-    z-index: 1;
-}
-
-input,
-select,
-textarea {
-    pointer-events: auto !important;
-    user-select: text !important;
-}
-
-button {
-    pointer-events: auto !important;
-}
-
-/* Prevent decorative layers from blocking clicks */
-
-.hero::before,
-.hero::after,
-.instructions-card::before,
-.instructions-card::after,
-.app-container::before,
-.app-container::after {
-    pointer-events: none !important;
-}
-
-/* Pro / Trial UI */
-
-.btn-pro,
-#upgradeProBtn {
-    width: 100%;
-    margin-top: 14px;
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    color: #111827;
-    box-shadow: 0 10px 28px rgba(251, 191, 36, 0.25);
-}
+/* ==========================
+   TRIAL / FOOTER
+========================== */
 
 .trial-status {
     margin: 12px 0 0;
@@ -459,7 +628,9 @@ button {
     line-height: 1.4;
 }
 
-/* App footer / disclaimer */
+.trial-ended {
+    color: #fca5a5;
+}
 
 .app-footer {
     width: min(1200px, 94%);
@@ -493,7 +664,9 @@ button {
     text-decoration: underline;
 }
 
-/* Liability Modal */
+/* ==========================
+   LIABILITY MODAL
+========================== */
 
 .modal-overlay {
     position: fixed;
@@ -539,12 +712,11 @@ button {
 #acceptLiabilityBtn {
     width: 100%;
     margin-top: 16px;
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    color: #fef3c7;
-    box-shadow: 0 10px 28px rgba(34, 197, 94, 0.25);
 }
 
-/* Toast notification */
+/* ==========================
+   TOAST
+========================== */
 
 .toast {
     position: fixed;
@@ -582,29 +754,77 @@ button {
     border-color: rgba(245, 158, 11, 0.75);
 }
 
-/* Responsive mobile/tablet */
+/* ==========================
+   CLICKABILITY FIXES
+========================== */
+
+.main-grid,
+.sidebar-panel,
+.input-card,
+.form-group,
+input,
+select,
+textarea,
+button {
+    position: relative;
+    z-index: 10;
+}
+
+.hero,
+.instructions-card,
+.how-it-works-section {
+    position: relative;
+    z-index: 1;
+}
+
+input,
+select,
+textarea {
+    pointer-events: auto !important;
+    user-select: text !important;
+}
+
+button,
+.btn {
+    pointer-events: auto !important;
+}
+
+.hero::before,
+.hero::after,
+.instructions-card::before,
+.instructions-card::after,
+.app-container::before,
+.app-container::after,
+.how-it-works-section::before,
+.how-it-works-section::after {
+    pointer-events: none !important;
+}
+
+/* ==========================
+   RESPONSIVE
+========================== */
+
+@media (max-width: 980px) {
+    .hero-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-preview-card {
+        max-width: 560px;
+    }
+
+    .steps-grid {
+        grid-template-columns: 1fr;
+    }
+}
 
 @media (max-width: 900px) {
-    .app-layout,
     .main-grid {
         grid-template-columns: 1fr;
     }
 
-    .form-card,
     .input-card {
         position: static;
-    }
-
-    .hero h1 {
-        font-size: 2.8rem;
-    }
-
-    .hero h2 {
-        font-size: 1.5rem;
-    }
-
-    .info-strip .container {
-        grid-template-columns: 1fr;
     }
 
     .action-row button {
@@ -613,26 +833,49 @@ button {
 }
 
 @media (max-width: 600px) {
-    .container {
-        width: 94%;
-        padding: 24px 0;
-    }
-
     .hero {
-        padding: 45px 16px 35px;
+        padding: 20px 14px 42px;
     }
 
-    .hero h1 {
-        font-size: 2.2rem;
+    .top-nav {
+        align-items: flex-start;
+        margin-bottom: 38px;
     }
 
-    .app-logo {
-        width: 220px;
-        height: 220px;
+    .brand-subtitle {
+        display: none;
     }
 
-    .card,
-    .form-card,
+    .nav-cta {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+
+    .hero-title {
+        font-size: 2.45rem;
+    }
+
+    .hero-tagline {
+        font-size: 1rem;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+    }
+
+    .hero-btn {
+        width: 100% !important;
+    }
+
+    .trust-row {
+        flex-direction: column;
+    }
+
+    .how-it-works-section {
+        padding: 22px;
+        border-radius: 22px;
+    }
+
     .input-card,
     .output-card,
     .saved-jobs-card,
@@ -641,7 +884,8 @@ button {
         border-radius: 18px;
     }
 
-    button {
+    button,
+    .btn {
         width: 100%;
     }
 

@@ -21,47 +21,174 @@
         <header class="hero">
             <div class="hero-content">
 
-                <div class="logo-wrapper">
-                    <img 
-                        src="logo.png" 
-                        alt="OneToMany Contractors Logo" 
-                        class="app-logo"
-                        onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';"
-                    >
+                <nav class="top-nav">
+                    <div class="brand-lockup">
+                        <img 
+                            src="logo.png" 
+                            alt="OneToMany Contractors Logo" 
+                            class="nav-logo"
+                            onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';"
+                        >
 
-                    <div 
-                        id="logoFallback" 
-                        style="
-                            display: none;
-                            width: 96px;
-                            height: 96px;
-                            margin: 0 auto 20px auto;
-                            border-radius: 24px;
-                            align-items: center;
-                            justify-content: center;
-                            background: linear-gradient(135deg, #22c55e, #16a34a);
-                            color: #111827;
-                            font-size: 28px;
-                            font-weight: 900;
-                            box-shadow: 0 0 30px rgba(34, 197, 94, 0.45);
-                        "
-                    >
-                        OTM
+                        <div 
+                            id="logoFallback" 
+                            class="logo-fallback"
+                            style="display: none;"
+                        >
+                            OTM
+                        </div>
+
+                        <div>
+                            <p class="brand-name">OneToMany Contractors</p>
+                            <p class="brand-subtitle">Contractor document generator</p>
+                        </div>
                     </div>
-                </div>
 
-                <h1 class="hero-title">OneToMany Contractors</h1>
-                <p class="hero-tagline">One Request. Many Documents. More Jobs.</p>
+                    <a href="#jobDetails" class="nav-cta">
+                        Start Free
+                    </a>
+                </nav>
+
+                <div class="hero-grid">
+
+                    <div class="hero-copy">
+                        <p class="eyebrow">
+                            7-day free trial • $20/month after trial
+                        </p>
+
+                        <h1 class="hero-title">
+                            Turn one contractor job into every document you need.
+                        </h1>
+
+                        <p class="hero-tagline">
+                            Create quotes, invoices, service agreement drafts, customer emails,
+                            follow-up texts, and PDFs from one simple form.
+                        </p>
+
+                        <div class="hero-actions">
+                            <a href="#jobDetails" class="btn btn-primary hero-btn">
+                                <i class="fas fa-wand-magic-sparkles"></i>
+                                Start Creating Documents
+                            </a>
+
+                            <a href="#howItWorks" class="btn btn-ghost hero-btn">
+                                <i class="fas fa-circle-play"></i>
+                                See How It Works
+                            </a>
+                        </div>
+
+                        <div class="trust-row">
+                            <span>
+                                <i class="fas fa-check"></i>
+                                No credit card required to try
+                            </span>
+
+                            <span>
+                                <i class="fas fa-check"></i>
+                                Export PDFs
+                            </span>
+
+                            <span>
+                                <i class="fas fa-check"></i>
+                                Built for small contractors
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="hero-preview-card">
+                        <div class="preview-topline">
+                            <span class="preview-dot"></span>
+                            One job input
+                        </div>
+
+                        <div class="preview-arrow">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+
+                        <div class="preview-output-list">
+                            <div>
+                                <i class="fas fa-quote-left"></i>
+                                Quote
+                            </div>
+
+                            <div>
+                                <i class="fas fa-receipt"></i>
+                                Invoice
+                            </div>
+
+                            <div>
+                                <i class="fas fa-handshake"></i>
+                                Agreement draft
+                            </div>
+
+                            <div>
+                                <i class="fas fa-envelope"></i>
+                                Customer email
+                            </div>
+
+                            <div>
+                                <i class="fas fa-comment-dots"></i>
+                                SMS follow-up
+                            </div>
+
+                            <div>
+                                <i class="fas fa-file-pdf"></i>
+                                PDF exports
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
 
             </div>
         </header>
 
+        <section id="howItWorks" class="how-it-works-section">
+            <div class="section-heading">
+                <p class="eyebrow">How it works</p>
+                <h2>Paperwork in minutes, not after midnight.</h2>
+                <p>
+                    Stop rewriting the same project details across quotes, invoices, agreements,
+                    emails, and follow-up messages.
+                </p>
+            </div>
+
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h3>Enter job details</h3>
+                    <p>
+                        Add the customer name, job type, price, timeline, and project notes once.
+                    </p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h3>Generate documents</h3>
+                    <p>
+                        Instantly create a quote, invoice, agreement draft, email, and SMS follow-up.
+                    </p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h3>Send or save</h3>
+                    <p>
+                        Export PDFs, copy text, open Gmail, or save the job for later follow-up.
+                    </p>
+                </div>
+            </div>
+        </section>
+
         <section class="instructions-card">
-            <h3>How It Works</h3>
+            <h3>
+                <i class="fas fa-bolt"></i>
+                Quick Start
+            </h3>
 
             <p>
-                Enter customer details <strong>once</strong>, then instantly generate a professional quote,
-                invoice, service agreement draft, customer email, and follow-up SMS — all tailored to your business.
+                Enter customer details <strong>once</strong>, then generate professional contractor documents
+                you can review, edit, export, copy, email, or save.
             </p>
         </section>
 
@@ -69,7 +196,7 @@
 
             <aside class="sidebar-panel">
 
-                <div class="input-card">
+                <div id="jobDetails" class="input-card">
 
                     <h2 class="card-title">
                         <i class="fas fa-edit"></i>
