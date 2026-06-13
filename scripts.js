@@ -14,9 +14,14 @@ let currentUser = null;
 let supabaseSetupError = null;
 let authInitialized = false;
 let profileLoaded = false;
+let currentUserProfile = null;
 let profileStatus = {
     isPro: false,
-    subscriptionStatus: "free"
+    subscriptionStatus: "free",
+    stripeCustomerId: null,
+    stripeSubscriptionId: null,
+    stripeTrialEnd: null,
+    stripeCurrentPeriodEnd: null
 };
 
 const authSection = document.getElementById("authSection");
@@ -242,33 +247,58 @@ async function getSupabaseAccessToken() {
 }
 
 function setProfileStatus(data) {
+    currentUserProfile = data || null;
+
+    const trialEndFromProfile =
+        data?.stripe_trial_end ||
+        data?.stripe_current_period_end ||
+        data?.stripeTrialEnd ||
+        data?.stripeCurrentPeriodEnd ||
+        null;
+
+    console.log(
+        "Trial end from profile:",
+        data?.stripe_trial_end || data?.stripe_current_period_end
+    );
+
     profileStatus = {
-        isPro: Boolean(data?.isPro),
-        subscriptionStatus: data?.subscriptionStatus || "free"
+        isPro: Boolean(data?.isPro ?? data?.is_pro),
+        subscriptionStatus: data?.subscriptionStatus || data?.subscription_status || "free",
+        stripeCustomerId: data?.stripeCustomerId || data?.stripe_customer_id || null,
+        stripeSubscriptionId: data?.stripeSubscriptionId || data?.stripe_subscription_id || null,
+        stripeTrialEnd: trialEndFromProfile,
+        stripeCurrentPeriodEnd:
+            data?.stripeCurrentPeriodEnd || data?.stripe_current_period_end || null
     };
 
     profileLoaded = true;
 }
 
 function resetProfileStatus() {
+    currentUserProfile = null;
+
     profileStatus = {
         isPro: false,
-        subscriptionStatus: "free"
+        subscriptionStatus: "free",
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        stripeTrialEnd: null,
+        stripeCurrentPeriodEnd: null
     };
 
     profileLoaded = false;
 }
 
-async function refreshProfileStatus() {
+async function refreshProfileStatus(options = {}) {
     if (!isSupabaseConfigured() || !currentUser) {
         resetProfileStatus();
-        return;
+        return null;
     }
 
     try {
         const accessToken = await getSupabaseAccessToken();
 
-        if (!accessToken) return;
+        if (!accessToken) return null;
 
         const response = await fetch("/api/profile", {
             method: "POST",
@@ -287,8 +317,16 @@ async function refreshProfileStatus() {
         setProfileStatus(data);
         updateTrialStatus();
 
+        if (options.logAfterCheckout) {
+            console.log("Profile after checkout refresh:", data);
+            console.log("Subscription status:", data.subscription_status || data.subscriptionStatus);
+        }
+
+        return data;
+
     } catch (error) {
         console.error("Profile status refresh failed:", error);
+        return null;
     }
 }
 
@@ -510,13 +548,6 @@ function isProActive() {
     );
 }
 
-function activateProAccess() {
-    profileStatus.isPro = true;
-    profileStatus.subscriptionStatus = "active";
-    profileLoaded = true;
-    updateTrialStatus();
-}
-
 function requireActiveTrial() {
     if (!requireSignedIn()) {
         return false;
@@ -556,6 +587,43 @@ function canUseFreeAI() {
     };
 }
 
+function getDaysUntil(dateValue) {
+    if (!dateValue) return null;
+
+    const endTime = new Date(dateValue).getTime();
+
+    if (!Number.isFinite(endTime)) {
+        return null;
+    }
+
+    const msLeft = endTime - Date.now();
+
+    return Math.max(0, Math.ceil(msLeft / 86400000));
+}
+
+function getTrialDaysLeftText() {
+    const daysLeft = getDaysUntil(
+        profileStatus.stripeTrialEnd || profileStatus.stripeCurrentPeriodEnd
+    );
+
+    if (daysLeft === null) {
+        return null;
+    }
+
+    return daysLeft === 1
+        ? "1 day left"
+        : `${daysLeft} days left`;
+}
+
+function setUpgradeButtonState(button, label, isActiveSubscription) {
+    if (!button) return;
+
+    button.innerHTML = `<i class="fas fa-crown"></i> ${label}`;
+    button.dataset.subscriptionActive = isActiveSubscription ? "true" : "false";
+    button.disabled = false;
+    button.classList.toggle("subscription-active", Boolean(isActiveSubscription));
+}
+
 function updateTrialStatus() {
     const trialStatus = document.getElementById("trialStatus");
     const upgradeButton = document.getElementById("upgradeProBtn");
@@ -565,41 +633,40 @@ function updateTrialStatus() {
     if (!currentUser) {
         trialStatus.textContent = "Sign in to start your 7-day free trial through Stripe.";
         trialStatus.classList.remove("trial-ended");
-        if (upgradeButton) {
-            upgradeButton.innerHTML = '<i class="fas fa-crown"></i> Start 7-Day Trial';
-        }
+        setUpgradeButtonState(upgradeButton, "Start 7-Day Trial", false);
         return;
     }
 
     if (!profileLoaded) {
         trialStatus.textContent = "Loading subscription status...";
         trialStatus.classList.remove("trial-ended");
+        if (upgradeButton) {
+            upgradeButton.disabled = true;
+        }
         return;
     }
 
     if (profileStatus.subscriptionStatus === "trialing") {
-        trialStatus.textContent = "Free trial active through Stripe.";
+        const daysLeftText = getTrialDaysLeftText();
+
+        trialStatus.textContent = daysLeftText
+            ? `Free trial active \u2014 ${daysLeftText}`
+            : "Free trial active";
         trialStatus.classList.remove("trial-ended");
-        if (upgradeButton) {
-            upgradeButton.innerHTML = '<i class="fas fa-crown"></i> Manage Pro';
-        }
+        setUpgradeButtonState(upgradeButton, "Manage Pro", true);
         return;
     }
 
     if (profileStatus.subscriptionStatus === "active" || profileStatus.isPro) {
         trialStatus.textContent = "Pro active.";
         trialStatus.classList.remove("trial-ended");
-        if (upgradeButton) {
-            upgradeButton.innerHTML = '<i class="fas fa-crown"></i> Pro Active';
-        }
+        setUpgradeButtonState(upgradeButton, "Manage Pro", true);
         return;
     }
 
     trialStatus.textContent = "Start your 7-day free trial.";
     trialStatus.classList.add("trial-ended");
-    if (upgradeButton) {
-        upgradeButton.innerHTML = '<i class="fas fa-crown"></i> Start 7-Day Trial';
-    }
+    setUpgradeButtonState(upgradeButton, "Start 7-Day Trial", false);
 }
 
 /* ==========================
@@ -1673,8 +1740,45 @@ const upgradeProBtn = document.getElementById("upgradeProBtn");
 
 if (upgradeProBtn) {
     upgradeProBtn.addEventListener("click", async function () {
+        let stripeAction = "checkout";
+
         try {
             if (!requireSignedIn()) return;
+
+            if (!profileLoaded) {
+                showToast("Subscription status is still loading. Try again in a second.", "warning");
+                return;
+            }
+
+            if (isProActive()) {
+                stripeAction = "billing portal";
+                upgradeProBtn.disabled = true;
+                upgradeProBtn.textContent = "Opening Portal...";
+
+                const accessToken = await getSupabaseAccessToken();
+
+                if (!accessToken) {
+                    showToast("Please log in again before managing Pro.", "warning");
+                    return;
+                }
+
+                const response = await fetch("/create-billing-portal-session", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${accessToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.url) {
+                    throw new Error(data.error || "Could not open billing portal.");
+                }
+
+                window.location.href = data.url;
+                return;
+            }
 
             upgradeProBtn.disabled = true;
             upgradeProBtn.textContent = "Opening Checkout...";
@@ -1703,8 +1807,8 @@ if (upgradeProBtn) {
             window.location.href = data.url;
 
         } catch (error) {
-            console.error("Checkout error:", error);
-            showToast("Could not open Stripe checkout. Please try again.", "error");
+            console.error(`Stripe ${stripeAction} error:`, error);
+            showToast(`Could not open Stripe ${stripeAction}. Please try again.`, "error");
         } finally {
             upgradeProBtn.disabled = false;
             updateTrialStatus();
@@ -1727,21 +1831,25 @@ async function checkStripeSuccess() {
         return;
     }
 
-    if (!sessionId) return;
+    if (checkoutStatus !== "success" && !sessionId) return;
 
     try {
-        showToast("Verifying payment...", "success");
+        showToast("Pro unlocked! Thank you for subscribing.", "success");
 
-        const response = await fetch(`/verify-checkout-session?session_id=${encodeURIComponent(sessionId)}`);
-        const data = await response.json();
+        if (sessionId) {
+            const response = await fetch(`/verify-checkout-session?session_id=${encodeURIComponent(sessionId)}`);
+            const data = await response.json();
 
-        if (data.paid) {
-            activateProAccess();
-            await refreshProfileStatus();
-            showToast("Pro unlocked. Thank you for subscribing!", "success");
-        } else {
-            showToast("Payment could not be verified yet. Contact support if you were charged.", "warning");
+            if (!response.ok || !data.paid) {
+                console.warn("Checkout verification response:", data);
+                showToast("Checkout completed. Refreshing subscription status...", "warning");
+            }
         }
+
+        await refreshProfileStatus({
+            logAfterCheckout: true
+        });
+        updateTrialStatus();
 
     } catch (error) {
         console.error("Payment verification error:", error);

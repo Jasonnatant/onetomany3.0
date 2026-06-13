@@ -74,6 +74,89 @@ function isSubscriptionPro(status) {
     return status === "active" || status === "trialing";
 }
 
+function stripeTimestampToIso(timestamp) {
+    if (!timestamp) return null;
+
+    const date = new Date(timestamp * 1000);
+
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    return date.toISOString();
+}
+
+function getSubscriptionProfileUpdate(subscription, options = {}) {
+    const forceInactive = Boolean(options.forceInactive);
+    const status = forceInactive ? "canceled" : subscription?.status || "unknown";
+    const isPro = forceInactive ? false : isSubscriptionPro(status);
+    const customerId =
+        typeof subscription?.customer === "string"
+            ? subscription.customer
+            : subscription?.customer?.id;
+
+    return {
+        stripe_customer_id: options.customerId || customerId || null,
+        stripe_subscription_id: options.subscriptionId || subscription?.id || null,
+        subscription_status: status,
+        is_pro: isPro,
+        stripe_trial_end: stripeTimestampToIso(subscription?.trial_end),
+        stripe_current_period_end: stripeTimestampToIso(subscription?.current_period_end),
+        updated_at: new Date().toISOString()
+    };
+}
+
+function isMissingStripeDateColumnError(error) {
+    const errorText = [
+        error?.code,
+        error?.message,
+        error?.details,
+        error?.hint
+    ].filter(Boolean).join(" ");
+
+    return (
+        error?.code === "42703" ||
+        error?.code === "PGRST204" ||
+        errorText.includes("stripe_trial_end") ||
+        errorText.includes("stripe_current_period_end")
+    );
+}
+
+async function updateProfileById(profileId, update, context) {
+    const { error } = await supabaseAdmin
+        .from("profiles")
+        .update(update)
+        .eq("id", profileId);
+
+    if (!error) return;
+
+    if (isMissingStripeDateColumnError(error)) {
+        const fallbackUpdate = {
+            ...update
+        };
+
+        delete fallbackUpdate.stripe_trial_end;
+        delete fallbackUpdate.stripe_current_period_end;
+
+        console.warn(
+            "Stripe date columns are missing on public.profiles. Run supabase_stripe_subscription_columns.sql."
+        );
+
+        const { error: fallbackError } = await supabaseAdmin
+            .from("profiles")
+            .update(fallbackUpdate)
+            .eq("id", profileId);
+
+        if (!fallbackError) return;
+
+        console.error(context, fallbackError);
+        throw fallbackError;
+    }
+
+    console.error(context, error);
+    throw error;
+}
+
 async function getUserFromRequest(req) {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.replace("Bearer ", "").trim();
@@ -102,11 +185,24 @@ function getRequestErrorStatus(error) {
 }
 
 function getProfileResponse(user, profile) {
+    const subscriptionStatus = profile?.subscription_status || "free";
+    const isPro = Boolean(profile?.is_pro);
+
     return {
         userId: user.id,
         email: user.email || null,
-        isPro: Boolean(profile?.is_pro),
-        subscriptionStatus: profile?.subscription_status || "free"
+        isPro,
+        is_pro: isPro,
+        subscriptionStatus,
+        subscription_status: subscriptionStatus,
+        stripeCustomerId: profile?.stripe_customer_id || null,
+        stripe_customer_id: profile?.stripe_customer_id || null,
+        stripeSubscriptionId: profile?.stripe_subscription_id || null,
+        stripe_subscription_id: profile?.stripe_subscription_id || null,
+        stripeTrialEnd: profile?.stripe_trial_end || null,
+        stripe_trial_end: profile?.stripe_trial_end || null,
+        stripeCurrentPeriodEnd: profile?.stripe_current_period_end || null,
+        stripe_current_period_end: profile?.stripe_current_period_end || null
     };
 }
 
@@ -215,33 +311,21 @@ async function updateProfileFromSubscription(subscription, forceInactive = false
         return;
     }
 
-    const customerId =
-        typeof subscription.customer === "string"
-            ? subscription.customer
-            : subscription.customer?.id;
+    const update = getSubscriptionProfileUpdate(subscription, {
+        forceInactive
+    });
 
-    const status = forceInactive ? "canceled" : subscription.status;
-    const isPro = forceInactive ? false : isSubscriptionPro(status);
+    console.log("Subscription status:", update.subscription_status);
 
-    console.log("Subscription status:", status);
+    await updateProfileById(profile.id, update, "Subscription profile update error:");
 
-    const { error } = await supabaseAdmin
-        .from("profiles")
-        .update({
-            stripe_customer_id: customerId || null,
-            stripe_subscription_id: subscription.id || null,
-            subscription_status: status || "unknown",
-            is_pro: isPro,
-            updated_at: new Date().toISOString()
-        })
-        .eq("id", profile.id);
-
-    if (error) {
-        console.error("Subscription profile update error:", error);
-        throw new Error("Could not update subscription profile.");
-    }
-
-    console.log("Profile subscription updated:", profile.id, status, "is_pro:", isPro);
+    console.log(
+        "Profile subscription updated:",
+        profile.id,
+        update.subscription_status,
+        "is_pro:",
+        update.is_pro
+    );
 }
 
 async function updateProfileFromInvoicePaymentFailed(invoice) {
@@ -338,32 +422,30 @@ app.post(
                     return res.json({ received: true });
                 }
 
-                let subscriptionStatus = "active";
-                let isPro = true;
+                let subscription = null;
 
                 if (subscriptionId) {
-                    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-                    subscriptionStatus = subscription.status;
-                    isPro = isSubscriptionPro(subscriptionStatus);
+                    subscription = await stripe.subscriptions.retrieve(subscriptionId);
                 }
 
-                console.log("Subscription status:", subscriptionStatus);
-
-                const { error } = await supabaseAdmin
-                    .from("profiles")
-                    .update({
+                const update = subscription
+                    ? getSubscriptionProfileUpdate(subscription, {
+                        customerId,
+                        subscriptionId
+                    })
+                    : {
                         stripe_customer_id: customerId || null,
                         stripe_subscription_id: subscriptionId || null,
-                        subscription_status: subscriptionStatus,
-                        is_pro: isPro,
+                        subscription_status: "active",
+                        is_pro: true,
+                        stripe_trial_end: null,
+                        stripe_current_period_end: null,
                         updated_at: new Date().toISOString()
-                    })
-                    .eq("id", userId);
+                    };
 
-                if (error) {
-                    console.error("Checkout profile update error:", error);
-                    throw error;
-                }
+                console.log("Subscription status:", update.subscription_status);
+
+                await updateProfileById(userId, update, "Checkout profile update error:");
 
                 console.log("Checkout completed for user:", userId);
             }
@@ -488,6 +570,56 @@ app.post("/create-checkout-session", async function (req, res) {
     }
 });
 
+app.post("/create-billing-portal-session", async function (req, res) {
+    try {
+        if (!process.env.STRIPE_SECRET_KEY) {
+            return res.status(500).json({
+                error: "Stripe secret key is missing."
+            });
+        }
+
+        const user = await getUserFromRequest(req);
+
+        const { data: profile, error } = await supabaseAdmin
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+
+        if (error) {
+            console.error("Billing portal profile lookup error:", error);
+            return res.status(500).json({
+                error: "Could not load profile."
+            });
+        }
+
+        if (!profile || !profile.stripe_customer_id) {
+            return res.status(400).json({
+                error: "No Stripe customer found for this account."
+            });
+        }
+
+        console.log("Creating billing portal session for customer:", profile.stripe_customer_id);
+
+        const session = await stripe.billingPortal.sessions.create({
+            customer: profile.stripe_customer_id,
+            return_url: getAppUrl()
+        });
+
+        return res.json({
+            url: session.url
+        });
+
+    } catch (error) {
+        console.error("Stripe billing portal error message:", error.message);
+        console.error("Stripe billing portal full error:", error);
+
+        return res.status(getRequestErrorStatus(error)).json({
+            error: error.message || "Unable to create billing portal session."
+        });
+    }
+});
+
 app.get("/verify-checkout-session", async function (req, res) {
     try {
         const sessionId = req.query.session_id;
@@ -516,13 +648,18 @@ app.get("/verify-checkout-session", async function (req, res) {
             session.metadata?.supabase_user_id ||
             session.metadata?.user_id;
 
+        let subscription = null;
         let subscriptionStatus = "unknown";
         let isPro = false;
+        let stripeTrialEnd = null;
+        let stripeCurrentPeriodEnd = null;
 
         if (subscriptionId) {
-            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            subscription = await stripe.subscriptions.retrieve(subscriptionId);
             subscriptionStatus = subscription.status;
             isPro = isSubscriptionPro(subscriptionStatus);
+            stripeTrialEnd = stripeTimestampToIso(subscription.trial_end);
+            stripeCurrentPeriodEnd = stripeTimestampToIso(subscription.current_period_end);
         }
 
         const isPaid =
@@ -531,20 +668,24 @@ app.get("/verify-checkout-session", async function (req, res) {
             isPro;
 
         if (userId && isPaid) {
-            const { error } = await supabaseAdmin
-                .from("profiles")
-                .update({
+            const update = subscription
+                ? getSubscriptionProfileUpdate(subscription, {
+                    customerId,
+                    subscriptionId
+                })
+                : {
                     stripe_customer_id: customerId || null,
                     stripe_subscription_id: subscriptionId || null,
                     subscription_status: subscriptionStatus,
                     is_pro: isPro,
+                    stripe_trial_end: stripeTrialEnd,
+                    stripe_current_period_end: stripeCurrentPeriodEnd,
                     updated_at: new Date().toISOString()
-                })
-                .eq("id", userId);
+                };
 
-            if (error) {
-                console.error("Verify checkout profile update error:", error);
-            }
+            console.log("Subscription status:", update.subscription_status);
+
+            await updateProfileById(userId, update, "Verify checkout profile update error:");
         }
 
         return res.json({
@@ -552,7 +693,9 @@ app.get("/verify-checkout-session", async function (req, res) {
             customerEmail: session.customer_details?.email || null,
             subscriptionId: subscriptionId || null,
             subscriptionStatus,
-            isPro
+            isPro,
+            stripeTrialEnd,
+            stripeCurrentPeriodEnd
         });
 
     } catch (error) {
