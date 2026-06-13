@@ -1091,12 +1091,36 @@ button,
         margin-top: 16px;
     }
 
+    .form-group {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    input,
+    select,
+    textarea {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
     input,
     select,
     textarea,
     button,
     .btn {
         max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    #followUpDate {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
     }
 
     input,
