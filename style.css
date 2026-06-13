@@ -356,6 +356,12 @@ a {
     font-weight: 700;
 }
 
+.desktop-first-note {
+    margin-top: 12px !important;
+    color: #cbd5e1 !important;
+    font-size: 0.9rem;
+}
+
 /* ==========================
    MAIN APP LAYOUT
 ========================== */
@@ -969,6 +975,184 @@ button,
 
     .action-row button {
         width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    body {
+        padding-bottom: max(120px, calc(env(safe-area-inset-bottom) + 96px));
+    }
+
+    .app-container,
+    .hero-content,
+    .how-it-works-section,
+    .instructions-card,
+    .auth-section,
+    .main-grid,
+    .sidebar-panel,
+    .outputs-container,
+    .input-card,
+    .output-card,
+    .saved-jobs-card,
+    .auth-card,
+    .auth-form,
+    .app-footer {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .hero {
+        padding: 22px 0 42px;
+    }
+
+    .hero-content,
+    .auth-section,
+    .main-grid {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .how-it-works-section,
+    .instructions-card,
+    .auth-section,
+    .main-grid,
+    .app-footer {
+        margin-top: 24px;
+        margin-bottom: 24px;
+    }
+
+    .hero-grid,
+    .steps-grid,
+    .auth-card,
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-title {
+        font-size: clamp(2.15rem, 12vw, 3rem);
+        line-height: 1.02;
+        letter-spacing: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .hero-tagline {
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    .hero-actions,
+    .auth-actions,
+    .action-row,
+    .job-item-actions,
+    .button-group {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .hero-actions .btn,
+    .auth-actions .auth-btn,
+    .action-row button,
+    .job-item-actions button,
+    .button-group button,
+    #clearJobsBtn {
+        width: 100% !important;
+        margin-top: 0 !important;
+    }
+
+    .input-card,
+    .output-card,
+    .saved-jobs-card,
+    .instructions-card,
+    .auth-card,
+    .auth-form,
+    .how-it-works-section {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .card-title,
+    .output-card h3,
+    .saved-jobs-card h2 {
+        font-size: 1.35rem;
+        line-height: 1.25;
+        margin-bottom: 18px;
+    }
+
+    label {
+        font-size: 0.84rem;
+        line-height: 1.35;
+        margin-top: 16px;
+    }
+
+    input,
+    select,
+    textarea,
+    button,
+    .btn {
+        max-width: 100%;
+    }
+
+    input,
+    select,
+    button,
+    .btn {
+        min-height: 48px;
+    }
+
+    textarea {
+        min-height: 120px;
+        max-height: none;
+    }
+
+    .output-card textarea,
+    #quoteOutput,
+    #invoiceOutput,
+    #agreementOutput,
+    #emailOutput,
+    #smsOutput {
+        min-height: 120px;
+        max-height: none;
+    }
+
+    #agreementOutput,
+    #emailOutput {
+        min-height: 150px;
+    }
+
+    .trial-status,
+    .auth-status,
+    .empty-state {
+        font-size: 0.95rem;
+        line-height: 1.5;
+        text-align: center;
+    }
+
+    .saved-jobs-card {
+        margin-top: 24px;
+    }
+
+    .job-item {
+        padding: 16px;
+    }
+
+    .job-item-details,
+    .job-item-details small,
+    .support-line,
+    .support-line a {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .app-footer {
+        padding: 18px;
+        text-align: center;
     }
 }
 
