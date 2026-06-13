@@ -101,36 +101,76 @@ function getRequestErrorStatus(error) {
     return 500;
 }
 
+function getProfileResponse(user, profile) {
+    return {
+        userId: user.id,
+        email: user.email || null,
+        isPro: Boolean(profile?.is_pro),
+        subscriptionStatus: profile?.subscription_status || "free"
+    };
+}
+
 async function ensureProfile(user) {
     if (!user || !user.id) return null;
 
     const now = new Date().toISOString();
 
+    const { data: existingProfile, error: findError } = await supabaseAdmin
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+
+    if (findError) {
+        console.error("Profile lookup error:", findError);
+        throw new Error("Could not load user profile.");
+    }
+
+    if (existingProfile) {
+        const update = {
+            email: user.email || null,
+            updated_at: now
+        };
+
+        const { data, error } = await supabaseAdmin
+            .from("profiles")
+            .update(update)
+            .eq("id", user.id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Profile update error:", error);
+            throw new Error("Could not update user profile.");
+        }
+
+        return data;
+    }
+
     const { data, error } = await supabaseAdmin
         .from("profiles")
-        .upsert(
-            {
-                id: user.id,
-                email: user.email || null,
-                updated_at: now
-            },
-            {
-                onConflict: "id"
-            }
-        )
+        .insert({
+            id: user.id,
+            email: user.email || null,
+            subscription_status: "free",
+            is_pro: false,
+            updated_at: now
+        })
         .select()
         .single();
 
     if (error) {
-        console.error("Profile upsert error:", error);
-        throw new Error("Could not create or update user profile.");
+        console.error("Profile insert error:", error);
+        throw new Error("Could not create user profile.");
     }
 
     return data;
 }
 
 async function findProfileForSubscription(subscription) {
-    const userIdFromMetadata = subscription.metadata?.user_id;
+    const userIdFromMetadata =
+        subscription.metadata?.supabase_user_id ||
+        subscription.metadata?.user_id;
 
     if (userIdFromMetadata) {
         return {
@@ -180,8 +220,10 @@ async function updateProfileFromSubscription(subscription, forceInactive = false
             ? subscription.customer
             : subscription.customer?.id;
 
-    const status = forceInactive ? "cancelled" : subscription.status;
+    const status = forceInactive ? "canceled" : subscription.status;
     const isPro = forceInactive ? false : isSubscriptionPro(status);
+
+    console.log("Subscription status:", status);
 
     const { error } = await supabaseAdmin
         .from("profiles")
@@ -200,6 +242,44 @@ async function updateProfileFromSubscription(subscription, forceInactive = false
     }
 
     console.log("Profile subscription updated:", profile.id, status, "is_pro:", isPro);
+}
+
+async function updateProfileFromInvoicePaymentFailed(invoice) {
+    const subscriptionId =
+        typeof invoice.subscription === "string"
+            ? invoice.subscription
+            : invoice.subscription?.id;
+
+    const customerId =
+        typeof invoice.customer === "string"
+            ? invoice.customer
+            : invoice.customer?.id;
+
+    let query = supabaseAdmin
+        .from("profiles")
+        .update({
+            subscription_status: "past_due",
+            is_pro: false,
+            updated_at: new Date().toISOString()
+        });
+
+    if (subscriptionId) {
+        query = query.eq("stripe_subscription_id", subscriptionId);
+    } else if (customerId) {
+        query = query.eq("stripe_customer_id", customerId);
+    } else {
+        console.warn("invoice.payment_failed missing subscription/customer.");
+        return;
+    }
+
+    const { error } = await query;
+
+    if (error) {
+        console.error("Invoice payment failed profile update error:", error);
+        throw new Error("Could not update failed-payment profile.");
+    }
+
+    console.log("Subscription status:", "past_due");
 }
 
 /* ==========================
@@ -233,12 +313,15 @@ app.post(
         }
 
         try {
+            console.log("Stripe webhook received:", event.type);
+
             if (event.type === "checkout.session.completed") {
                 const session = event.data.object;
 
                 const userId =
-                    session.metadata?.user_id ||
-                    session.client_reference_id;
+                    session.client_reference_id ||
+                    session.metadata?.supabase_user_id ||
+                    session.metadata?.user_id;
 
                 const subscriptionId =
                     typeof session.subscription === "string"
@@ -263,6 +346,8 @@ app.post(
                     subscriptionStatus = subscription.status;
                     isPro = isSubscriptionPro(subscriptionStatus);
                 }
+
+                console.log("Subscription status:", subscriptionStatus);
 
                 const { error } = await supabaseAdmin
                     .from("profiles")
@@ -291,6 +376,11 @@ app.post(
             if (event.type === "customer.subscription.deleted") {
                 const subscription = event.data.object;
                 await updateProfileFromSubscription(subscription, true);
+            }
+
+            if (event.type === "invoice.payment_failed") {
+                const invoice = event.data.object;
+                await updateProfileFromInvoicePaymentFailed(invoice);
             }
 
             return res.json({
@@ -352,7 +442,7 @@ app.post("/create-checkout-session", async function (req, res) {
         }
 
         const user = await getUserFromRequest(req);
-        const profile = await ensureProfile(user);
+        await ensureProfile(user);
 
         const appUrl = getAppUrl();
 
@@ -364,27 +454,23 @@ app.post("/create-checkout-session", async function (req, res) {
                     quantity: 1
                 }
             ],
-            success_url: `${appUrl}/?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${appUrl}/?checkout=cancelled`,
+            success_url: `${appUrl}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${appUrl}/?checkout=cancel`,
             allow_promotion_codes: true,
             client_reference_id: user.id,
+            customer_email: user.email || undefined,
             metadata: {
-                user_id: user.id,
+                supabase_user_id: user.id,
                 email: user.email || ""
             },
             subscription_data: {
+                trial_period_days: 7,
                 metadata: {
-                    user_id: user.id,
+                    supabase_user_id: user.id,
                     email: user.email || ""
                 }
             }
         };
-
-        if (profile && profile.stripe_customer_id) {
-            checkoutParams.customer = profile.stripe_customer_id;
-        } else if (user.email) {
-            checkoutParams.customer_email = user.email;
-        }
 
         const session = await stripe.checkout.sessions.create(checkoutParams);
 
@@ -426,8 +512,9 @@ app.get("/verify-checkout-session", async function (req, res) {
                 : session.customer?.id;
 
         const userId =
-            session.metadata?.user_id ||
-            session.client_reference_id;
+            session.client_reference_id ||
+            session.metadata?.supabase_user_id ||
+            session.metadata?.user_id;
 
         let subscriptionStatus = "unknown";
         let isPro = false;
@@ -488,18 +575,29 @@ app.get("/profile-status", async function (req, res) {
         const user = await getUserFromRequest(req);
         const profile = await ensureProfile(user);
 
-        return res.json({
-            userId: user.id,
-            email: user.email || null,
-            isPro: Boolean(profile?.is_pro),
-            subscriptionStatus: profile?.subscription_status || "free"
-        });
+        return res.json(getProfileResponse(user, profile));
 
     } catch (error) {
         console.error("Profile status error:", error.message);
 
         return res.status(401).json({
             error: error.message || "Could not load profile status."
+        });
+    }
+});
+
+app.post("/api/profile", async function (req, res) {
+    try {
+        const user = await getUserFromRequest(req);
+        const profile = await ensureProfile(user);
+
+        return res.json(getProfileResponse(user, profile));
+
+    } catch (error) {
+        console.error("Profile sync error:", error);
+
+        return res.status(getRequestErrorStatus(error)).json({
+            error: error.message || "Could not sync profile."
         });
     }
 });

@@ -13,6 +13,11 @@ let supabaseClient = null;
 let currentUser = null;
 let supabaseSetupError = null;
 let authInitialized = false;
+let profileLoaded = false;
+let profileStatus = {
+    isPro: false,
+    subscriptionStatus: "free"
+};
 
 const authSection = document.getElementById("authSection");
 const authEmailInput = document.getElementById("authEmail");
@@ -174,8 +179,6 @@ function updateAuthUI() {
         showElement(logoutBtn, true, "inline-flex");
         document.body.classList.remove("auth-locked");
 
-        refreshProfileStatus();
-
         return;
     }
 
@@ -238,8 +241,27 @@ async function getSupabaseAccessToken() {
     return data.session.access_token;
 }
 
+function setProfileStatus(data) {
+    profileStatus = {
+        isPro: Boolean(data?.isPro),
+        subscriptionStatus: data?.subscriptionStatus || "free"
+    };
+
+    profileLoaded = true;
+}
+
+function resetProfileStatus() {
+    profileStatus = {
+        isPro: false,
+        subscriptionStatus: "free"
+    };
+
+    profileLoaded = false;
+}
+
 async function refreshProfileStatus() {
     if (!isSupabaseConfigured() || !currentUser) {
+        resetProfileStatus();
         return;
     }
 
@@ -248,9 +270,10 @@ async function refreshProfileStatus() {
 
         if (!accessToken) return;
 
-        const response = await fetch("/profile-status", {
-            method: "GET",
+        const response = await fetch("/api/profile", {
+            method: "POST",
             headers: {
+                "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`
             }
         });
@@ -261,12 +284,7 @@ async function refreshProfileStatus() {
             throw new Error(data.error || "Could not load profile status.");
         }
 
-        if (data.isPro) {
-            localStorage.setItem("oneToManyPro", "yes");
-        } else {
-            localStorage.removeItem("oneToManyPro");
-        }
-
+        setProfileStatus(data);
         updateTrialStatus();
 
     } catch (error) {
@@ -303,11 +321,13 @@ async function handleSignup() {
 
         if (data.session && data.session.user) {
             currentUser = data.session.user;
+            await refreshProfileStatus();
             updateAuthUI();
             await displaySavedJobs();
             showToast("Account created. You are signed in.", "success");
         } else {
             currentUser = null;
+            resetProfileStatus();
             updateAuthUI();
             await displaySavedJobs();
             showToast("Account created. Check your email to confirm, then log in.", "success");
@@ -350,6 +370,7 @@ async function handleLogin() {
 
         currentUser = data.user || null;
 
+        await refreshProfileStatus();
         updateAuthUI();
         await displaySavedJobs();
 
@@ -376,7 +397,7 @@ async function handleLogout() {
         }
 
         currentUser = null;
-        localStorage.removeItem("oneToManyPro");
+        resetProfileStatus();
 
         updateAuthUI();
         updateTrialStatus();
@@ -416,11 +437,23 @@ async function initializeAuth() {
                 : null;
 
         authInitialized = true;
+        if (currentUser) {
+            await refreshProfileStatus();
+        } else {
+            resetProfileStatus();
+        }
+
         updateAuthUI();
         await displaySavedJobs();
 
         supabaseClient.auth.onAuthStateChange(async function (_event, session) {
             currentUser = session && session.user ? session.user : null;
+            if (currentUser) {
+                await refreshProfileStatus();
+            } else {
+                resetProfileStatus();
+            }
+
             updateAuthUI();
             await displaySavedJobs();
         });
@@ -466,72 +499,22 @@ function showToast(message, type = "success") {
 }
 
 /* ==========================
-   TRIAL / PRO SETTINGS
+   STRIPE SUBSCRIPTION / PRO SETTINGS
 ========================== */
 
-const TRIAL_LENGTH_DAYS = 7;
-const FREE_AI_PER_DAY = 1;
-
 function isProActive() {
-    return localStorage.getItem("oneToManyPro") === "yes";
+    return (
+        Boolean(profileStatus.isPro) ||
+        profileStatus.subscriptionStatus === "trialing" ||
+        profileStatus.subscriptionStatus === "active"
+    );
 }
 
 function activateProAccess() {
-    localStorage.setItem("oneToManyPro", "yes");
+    profileStatus.isPro = true;
+    profileStatus.subscriptionStatus = "active";
+    profileLoaded = true;
     updateTrialStatus();
-}
-
-function getTodayKey() {
-    return new Date().toISOString().split("T")[0];
-}
-
-function getTrialData() {
-    let trialData;
-
-    try {
-        trialData = JSON.parse(localStorage.getItem("oneToManyTrial"));
-    } catch (error) {
-        trialData = null;
-    }
-
-    if (
-        !trialData ||
-        !trialData.trialStartedAt ||
-        !trialData.aiUsageByDate ||
-        typeof trialData.aiUsageByDate !== "object"
-    ) {
-        trialData = {
-            trialStartedAt: new Date().toISOString(),
-            aiUsageByDate: {}
-        };
-
-        localStorage.setItem("oneToManyTrial", JSON.stringify(trialData));
-    }
-
-    return trialData;
-}
-
-function saveTrialData(trialData) {
-    localStorage.setItem("oneToManyTrial", JSON.stringify(trialData));
-}
-
-function getTrialDaysUsed(trialData) {
-    const start = new Date(trialData.trialStartedAt);
-    const now = new Date();
-
-    const diffTime = now.getTime() - start.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays + 1;
-}
-
-function isTrialExpired(trialData) {
-    return getTrialDaysUsed(trialData) > TRIAL_LENGTH_DAYS;
-}
-
-function isTrialActive() {
-    const trialData = getTrialData();
-    return !isTrialExpired(trialData);
 }
 
 function requireActiveTrial() {
@@ -539,26 +522,17 @@ function requireActiveTrial() {
         return false;
     }
 
-    if (isProActive()) {
-        return true;
+    if (!profileLoaded) {
+        showToast("Subscription status is still loading. Try again in a second.", "warning");
+        return false;
     }
 
-    if (!isTrialActive()) {
-        showToast("Your free trial has ended. Upgrade to Pro for $20/month to continue using OneToMany Contractors.", "warning");
+    if (!isProActive()) {
+        showToast("Start your 7-day free trial through Stripe to unlock this feature.", "warning");
         return false;
     }
 
     return true;
-}
-
-function getTodayAIUsage(trialData) {
-    const today = getTodayKey();
-
-    if (!trialData.aiUsageByDate) {
-        trialData.aiUsageByDate = {};
-    }
-
-    return trialData.aiUsageByDate[today] || 0;
 }
 
 function canUseFreeAI() {
@@ -569,66 +543,63 @@ function canUseFreeAI() {
         };
     }
 
-    const trialData = getTrialData();
-
-    if (isTrialExpired(trialData)) {
+    if (!profileLoaded) {
         return {
             allowed: false,
-            reason: "expired"
-        };
-    }
-
-    const todayUsage = getTodayAIUsage(trialData);
-
-    if (todayUsage >= FREE_AI_PER_DAY) {
-        return {
-            allowed: false,
-            reason: "daily-limit"
+            reason: "loading"
         };
     }
 
     return {
-        allowed: true,
-        reason: "allowed"
+        allowed: false,
+        reason: "no-subscription"
     };
-}
-
-function recordAIUsage() {
-    const trialData = getTrialData();
-    const today = getTodayKey();
-
-    trialData.aiUsageByDate[today] = (trialData.aiUsageByDate[today] || 0) + 1;
-
-    saveTrialData(trialData);
-    updateTrialStatus();
 }
 
 function updateTrialStatus() {
     const trialStatus = document.getElementById("trialStatus");
+    const upgradeButton = document.getElementById("upgradeProBtn");
 
     if (!trialStatus) return;
 
-    if (isProActive()) {
-        trialStatus.textContent = "Pro active • Unlimited access unlocked.";
+    if (!currentUser) {
+        trialStatus.textContent = "Sign in to start your 7-day free trial through Stripe.";
+        trialStatus.classList.remove("trial-ended");
+        if (upgradeButton) {
+            upgradeButton.innerHTML = '<i class="fas fa-crown"></i> Start 7-Day Trial';
+        }
+        return;
+    }
+
+    if (!profileLoaded) {
+        trialStatus.textContent = "Loading subscription status...";
         trialStatus.classList.remove("trial-ended");
         return;
     }
 
-    const trialData = getTrialData();
-    const daysUsed = getTrialDaysUsed(trialData);
-    const daysLeft = Math.max(TRIAL_LENGTH_DAYS - daysUsed + 1, 0);
-    const todayUsage = getTodayAIUsage(trialData);
-
-    if (isTrialExpired(trialData)) {
-        trialStatus.textContent = "Free trial ended. Upgrade to Pro for $20/month to keep using OneToMany Contractors.";
-        trialStatus.classList.add("trial-ended");
+    if (profileStatus.subscriptionStatus === "trialing") {
+        trialStatus.textContent = "Free trial active through Stripe.";
+        trialStatus.classList.remove("trial-ended");
+        if (upgradeButton) {
+            upgradeButton.innerHTML = '<i class="fas fa-crown"></i> Manage Pro';
+        }
         return;
     }
 
-    trialStatus.classList.remove("trial-ended");
+    if (profileStatus.subscriptionStatus === "active" || profileStatus.isPro) {
+        trialStatus.textContent = "Pro active.";
+        trialStatus.classList.remove("trial-ended");
+        if (upgradeButton) {
+            upgradeButton.innerHTML = '<i class="fas fa-crown"></i> Pro Active';
+        }
+        return;
+    }
 
-    trialStatus.textContent =
-        `Free trial: ${daysLeft} day(s) left • Full access active • AI used today: ${todayUsage}/${FREE_AI_PER_DAY}`;
+    trialStatus.textContent = "Start your 7-day free trial.";
+    trialStatus.classList.add("trial-ended");
+    if (upgradeButton) {
+        upgradeButton.innerHTML = '<i class="fas fa-crown"></i> Start 7-Day Trial';
+    }
 }
 
 /* ==========================
@@ -1614,12 +1585,12 @@ if (aiImproveBtn) {
             const trialCheck = canUseFreeAI();
 
             if (!trialCheck.allowed) {
-                if (trialCheck.reason === "expired") {
-                    showToast("Your free trial has ended. Upgrade to Pro for $20/month to continue using OneToMany Contractors.", "warning");
+                if (trialCheck.reason === "loading") {
+                    showToast("Subscription status is still loading. Try again in a second.", "warning");
                 }
 
-                if (trialCheck.reason === "daily-limit") {
-                    showToast("Free trial AI limit reached. You get 1 AI generation per day. Upgrade to Pro for full access.", "warning");
+                if (trialCheck.reason === "no-subscription") {
+                    showToast("Start your 7-day free trial through Stripe to use AI Improve.", "warning");
                 }
 
                 return;
@@ -1682,10 +1653,6 @@ if (aiImproveBtn) {
             document.getElementById("smsOutput").value =
                 aiData.sms?.message || aiData.sms || "";
 
-            if (!isProActive()) {
-                recordAIUsage();
-            }
-
             showToast("🤖 AI documents generated!", "success");
 
         } catch (error) {
@@ -1740,7 +1707,7 @@ if (upgradeProBtn) {
             showToast("Could not open Stripe checkout. Please try again.", "error");
         } finally {
             upgradeProBtn.disabled = false;
-            upgradeProBtn.innerHTML = '<i class="fas fa-crown"></i> Upgrade to Pro';
+            updateTrialStatus();
         }
     });
 }
@@ -1754,7 +1721,7 @@ async function checkStripeSuccess() {
     const sessionId = params.get("session_id");
     const checkoutStatus = params.get("checkout");
 
-    if (checkoutStatus === "cancelled") {
+    if (checkoutStatus === "cancel" || checkoutStatus === "cancelled") {
         showToast("Checkout cancelled.", "warning");
         window.history.replaceState({}, document.title, window.location.pathname);
         return;
