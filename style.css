@@ -1104,6 +1104,7 @@ button,
         min-width: 0;
     }
 
+    /* Mobile follow-up date field fix */
     .input-card .form-group:has(#followUpDate) {
         display: block;
         grid-column: 1 / -1;
@@ -1111,6 +1112,7 @@ button,
         max-width: 100%;
         min-width: 0;
         overflow: hidden;
+        align-self: stretch;
     }
 
     input,
@@ -1132,6 +1134,8 @@ button,
     }
 
     #followUpDate {
+        -webkit-appearance: none;
+        appearance: none;
         display: block;
         width: 100%;
         max-width: 100%;
@@ -1140,6 +1144,28 @@ button,
         max-inline-size: 100%;
         min-inline-size: 0;
         box-sizing: border-box;
+        height: auto;
+        min-height: 56px;
+        padding: 16px 18px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        border-radius: 14px;
+        outline: none;
+        background-color: rgba(15, 23, 42, 0.75);
+        color: #f8fafc;
+        color-scheme: dark;
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    #followUpDate::-webkit-date-and-time-value {
+        min-width: 0;
+        text-align: left;
+    }
+
+    #followUpDate::-webkit-calendar-picker-indicator {
+        margin-left: auto;
+        opacity: 0.8;
     }
 
     input,
