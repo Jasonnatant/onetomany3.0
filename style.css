@@ -1007,6 +1007,13 @@ button,
         max-width: 100%;
     }
 
+    .main-grid,
+    .sidebar-panel,
+    .input-card {
+        min-width: 0;
+        overflow-x: hidden;
+    }
+
     .hero {
         padding: 22px 0 42px;
     }
@@ -1097,6 +1104,15 @@ button,
         min-width: 0;
     }
 
+    .input-card .form-group:has(#followUpDate) {
+        display: block;
+        grid-column: 1 / -1;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
+    }
+
     input,
     select,
     textarea {
@@ -1120,6 +1136,9 @@ button,
         width: 100%;
         max-width: 100%;
         min-width: 0;
+        inline-size: 100%;
+        max-inline-size: 100%;
+        min-inline-size: 0;
         box-sizing: border-box;
     }
 
