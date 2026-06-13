@@ -6,6 +6,446 @@ const savedJobsList = document.getElementById("savedJobsList");
 const clearJobsBtn = document.getElementById("clearJobsBtn");
 
 /* ==========================
+   SUPABASE AUTH SETTINGS
+========================== */
+
+let supabaseClient = null;
+let currentUser = null;
+let supabaseSetupError = null;
+let authInitialized = false;
+
+const authSection = document.getElementById("authSection");
+const authEmailInput = document.getElementById("authEmail");
+const authPasswordInput = document.getElementById("authPassword");
+const signupBtn = document.getElementById("signupBtn");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const authStatus = document.getElementById("authStatus");
+const navAuthStatus = document.getElementById("navAuthStatus");
+
+function isSupabaseConfigured() {
+    return !!supabaseClient;
+}
+
+function getApiUrl(path) {
+    return path;
+}
+
+async function fetchSupabasePublicConfig() {
+    const configUrl = "/supabase-config";
+
+    try {
+        const response = await fetch(configUrl, {
+            cache: "no-store"
+        });
+
+        const config = await response.json();
+
+        console.info("Supabase config response:", config);
+        console.info("Supabase config status:", {
+            url: configUrl,
+            hasUrl: Boolean(config.url),
+            hasAnonKey: Boolean(config.anonKey)
+        });
+
+        if (!response.ok) {
+            throw new Error(config.error || "Could not load Supabase config.");
+        }
+
+        if (!config.url || !config.anonKey) {
+            console.error("Invalid Supabase config object:", config);
+            throw new Error("Supabase config is missing url or anonKey.");
+        }
+
+        return config;
+
+    } catch (error) {
+        console.error("Supabase config fetch failed:", {
+            url: configUrl,
+            error
+        });
+        throw error;
+    }
+}
+
+async function setupSupabaseClient() {
+    try {
+        supabaseSetupError = null;
+
+        console.info("window.supabase exists:", Boolean(window.supabase));
+
+        if (!window.supabase || !window.supabase.createClient) {
+            throw new Error("Supabase library failed to load.");
+        }
+
+        const config = await fetchSupabasePublicConfig();
+
+        supabaseClient = window.supabase.createClient(
+            config.url,
+            config.anonKey
+        );
+
+        console.info("Supabase client created:", Boolean(supabaseClient));
+
+        return true;
+
+    } catch (error) {
+        console.error("Supabase setup error:", error);
+        supabaseSetupError = error;
+        supabaseClient = null;
+        return false;
+    }
+}
+
+function showElement(element, shouldShow, displayValue = "") {
+    if (!element) return;
+
+    if (shouldShow) {
+        element.classList.remove("hidden");
+        element.style.display = displayValue;
+    } else {
+        element.classList.add("hidden");
+        element.style.display = "none";
+    }
+}
+
+function setAuthButtonsDisabled(isDisabled) {
+    if (signupBtn) signupBtn.disabled = isDisabled;
+    if (loginBtn) loginBtn.disabled = isDisabled;
+    if (logoutBtn) logoutBtn.disabled = isDisabled;
+}
+
+function getAuthCredentials() {
+    const email = authEmailInput ? authEmailInput.value.trim() : "";
+    const password = authPasswordInput ? authPasswordInput.value : "";
+
+    return {
+        email,
+        password
+    };
+}
+
+function validateAuthCredentials(email, password) {
+    if (!email) {
+        showToast("Please enter your email.", "warning");
+        return false;
+    }
+
+    if (!password || password.length < 6) {
+        showToast("Please enter a password with at least 6 characters.", "warning");
+        return false;
+    }
+
+    return true;
+}
+
+function updateAuthUI() {
+    const configured = isSupabaseConfigured();
+
+    if (!configured) {
+        showElement(authSection, false);
+
+        if (authStatus) {
+            authStatus.textContent = supabaseSetupError
+                ? supabaseSetupError.message
+                : "Login is loading...";
+        }
+
+        if (navAuthStatus) {
+            navAuthStatus.textContent = "Auth setup pending";
+        }
+
+        showElement(logoutBtn, false);
+        document.body.classList.remove("auth-locked");
+        return;
+    }
+
+    if (currentUser) {
+        showElement(authSection, false);
+
+        if (authStatus) {
+            authStatus.textContent = `Signed in as ${currentUser.email}`;
+        }
+
+        if (navAuthStatus) {
+            navAuthStatus.textContent = currentUser.email || "Signed in";
+        }
+
+        showElement(logoutBtn, true, "inline-flex");
+        document.body.classList.remove("auth-locked");
+
+        refreshProfileStatus();
+
+        return;
+    }
+
+    showElement(authSection, true, "block");
+
+    if (authStatus) {
+        authStatus.textContent = "Not signed in. Create an account or log in to use the app.";
+    }
+
+    if (navAuthStatus) {
+        navAuthStatus.textContent = "Not signed in";
+    }
+
+    showElement(logoutBtn, false);
+    document.body.classList.add("auth-locked");
+}
+
+function isUserSignedIn() {
+    return !!currentUser;
+}
+
+function requireSignedIn() {
+    if (!authInitialized) {
+        showToast("Login is still loading. Try again in a second.", "warning");
+        return false;
+    }
+
+    if (!isSupabaseConfigured()) {
+        showToast("Supabase auth setup failed. Check /supabase-config.", "error");
+        return false;
+    }
+
+    if (currentUser) {
+        return true;
+    }
+
+    showToast("Please create an account or log in first.", "warning");
+
+    if (authSection) {
+        authSection.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+    }
+
+    return false;
+}
+
+async function getSupabaseAccessToken() {
+    if (!supabaseClient) {
+        return null;
+    }
+
+    const { data, error } = await supabaseClient.auth.getSession();
+
+    if (error || !data.session) {
+        return null;
+    }
+
+    return data.session.access_token;
+}
+
+async function refreshProfileStatus() {
+    if (!isSupabaseConfigured() || !currentUser) {
+        return;
+    }
+
+    try {
+        const accessToken = await getSupabaseAccessToken();
+
+        if (!accessToken) return;
+
+        const response = await fetch("/profile-status", {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not load profile status.");
+        }
+
+        if (data.isPro) {
+            localStorage.setItem("oneToManyPro", "yes");
+        } else {
+            localStorage.removeItem("oneToManyPro");
+        }
+
+        updateTrialStatus();
+
+    } catch (error) {
+        console.error("Profile status refresh failed:", error);
+    }
+}
+
+async function handleSignup() {
+    if (!authInitialized) {
+        showToast("Login is still loading. Try again in a second.", "warning");
+        return;
+    }
+
+    if (!supabaseClient) {
+        showToast("Supabase auth setup failed. Check /supabase-config.", "warning");
+        return;
+    }
+
+    const { email, password } = getAuthCredentials();
+
+    if (!validateAuthCredentials(email, password)) return;
+
+    try {
+        setAuthButtonsDisabled(true);
+
+        const { data, error } = await supabaseClient.auth.signUp({
+            email,
+            password
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        if (data.session && data.session.user) {
+            currentUser = data.session.user;
+            updateAuthUI();
+            await displaySavedJobs();
+            showToast("Account created. You are signed in.", "success");
+        } else {
+            currentUser = null;
+            updateAuthUI();
+            await displaySavedJobs();
+            showToast("Account created. Check your email to confirm, then log in.", "success");
+        }
+
+    } catch (error) {
+        console.error("Signup error:", error);
+        showToast(error.message || "Could not create account.", "error");
+    } finally {
+        setAuthButtonsDisabled(false);
+    }
+}
+
+async function handleLogin() {
+    if (!authInitialized) {
+        showToast("Login is still loading. Try again in a second.", "warning");
+        return;
+    }
+
+    if (!supabaseClient) {
+        showToast("Supabase auth setup failed. Check /supabase-config.", "warning");
+        return;
+    }
+
+    const { email, password } = getAuthCredentials();
+
+    if (!validateAuthCredentials(email, password)) return;
+
+    try {
+        setAuthButtonsDisabled(true);
+
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        currentUser = data.user || null;
+
+        updateAuthUI();
+        await displaySavedJobs();
+
+        showToast("Logged in successfully.", "success");
+
+    } catch (error) {
+        console.error("Login error:", error);
+        showToast(error.message || "Could not log in.", "error");
+    } finally {
+        setAuthButtonsDisabled(false);
+    }
+}
+
+async function handleLogout() {
+    if (!supabaseClient) return;
+
+    try {
+        setAuthButtonsDisabled(true);
+
+        const { error } = await supabaseClient.auth.signOut();
+
+        if (error) {
+            throw error;
+        }
+
+        currentUser = null;
+        localStorage.removeItem("oneToManyPro");
+
+        updateAuthUI();
+        updateTrialStatus();
+        await displaySavedJobs();
+
+        showToast("Logged out.", "success");
+
+    } catch (error) {
+        console.error("Logout error:", error);
+        showToast(error.message || "Could not log out.", "error");
+    } finally {
+        setAuthButtonsDisabled(false);
+    }
+}
+
+async function initializeAuth() {
+    authInitialized = false;
+
+    const configured = await setupSupabaseClient();
+
+    if (!configured) {
+        updateAuthUI();
+        await displaySavedJobs();
+        return;
+    }
+
+    try {
+        const { data, error } = await supabaseClient.auth.getSession();
+
+        if (error) {
+            throw error;
+        }
+
+        currentUser =
+            data.session && data.session.user
+                ? data.session.user
+                : null;
+
+        authInitialized = true;
+        updateAuthUI();
+        await displaySavedJobs();
+
+        supabaseClient.auth.onAuthStateChange(async function (_event, session) {
+            currentUser = session && session.user ? session.user : null;
+            updateAuthUI();
+            await displaySavedJobs();
+        });
+
+    } catch (error) {
+        console.error("Auth initialization error:", error);
+        showToast("Could not initialize login. Check Supabase settings.", "error");
+        updateAuthUI();
+        await displaySavedJobs();
+    }
+}
+
+if (signupBtn) {
+    signupBtn.addEventListener("click", handleSignup);
+}
+
+if (loginBtn) {
+    loginBtn.addEventListener("click", handleLogin);
+}
+
+if (logoutBtn) {
+    logoutBtn.addEventListener("click", handleLogout);
+}
+
+/* ==========================
    TOAST NOTIFICATIONS
 ========================== */
 
@@ -95,6 +535,10 @@ function isTrialActive() {
 }
 
 function requireActiveTrial() {
+    if (!requireSignedIn()) {
+        return false;
+    }
+
     if (isProActive()) {
         return true;
     }
@@ -420,32 +864,6 @@ if (generateButton) {
 }
 
 /* ==========================
-   SAVE JOB
-========================== */
-
-if (saveJobButton) {
-    saveJobButton.addEventListener("click", function () {
-        if (!requireActiveTrial()) return;
-
-        const job = getFormData();
-
-        if (!validateJob(job)) return;
-
-        job.savedAt = new Date().toLocaleString();
-
-        const savedJobs = JSON.parse(localStorage.getItem("savedJobs")) || [];
-
-        savedJobs.push(job);
-
-        localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
-
-        displaySavedJobs();
-
-        showToast("✅ Job saved successfully!", "success");
-    });
-}
-
-/* ==========================
    CLEAR FORM
 ========================== */
 
@@ -488,22 +906,173 @@ if (clearFormBtn) {
 }
 
 /* ==========================
-   SAVED JOBS DISPLAY
+   SUPABASE SAVED JOBS
 ========================== */
 
-function displaySavedJobs() {
+function mapDatabaseRowToJob(row) {
+    return {
+        id: row.id,
+        businessName: row.business_name || "",
+        customerName: row.customer_name || "",
+        customerEmail: row.customer_email || "",
+        customerPhone: row.customer_phone || "",
+        projectType: row.project_type || "Deck Repair",
+        estimatedPrice: row.estimated_price || "",
+        timeline: row.timeline || "",
+        projectNotes: row.project_notes || "",
+        jobStatus: row.job_status || "Lead",
+        followUpDate: row.follow_up_date || "",
+        savedAt: row.saved_at
+            ? new Date(row.saved_at).toLocaleString()
+            : "Unknown"
+    };
+}
+
+async function fetchSavedJobsApi(path, options = {}) {
+    const accessToken = await getSupabaseAccessToken();
+
+    if (!accessToken) {
+        throw new Error("Please log in first.");
+    }
+
+    const headers = Object.assign({}, options.headers || {}, {
+        Authorization: `Bearer ${accessToken}`
+    });
+
+    const method = options.method || "GET";
+    const requestUrl = getApiUrl(path);
+    const isSaveJobRequest = method === "POST" && path === "/api/jobs";
+    let response;
+
+    if (isSaveJobRequest) {
+        console.log("Save Job URL:", "/api/jobs");
+        console.log("Save Job origin:", window.location.origin);
+    }
+
+    try {
+        response = await fetch(requestUrl, Object.assign({}, options, {
+            headers
+        }));
+    } catch (error) {
+        if (isSaveJobRequest) {
+            console.error("Save Job network error:", error);
+        }
+
+        console.error("Saved jobs network error:", {
+            url: requestUrl,
+            error
+        });
+        throw new Error("Could not reach the saved jobs API. Make sure the server is running on localhost:3000.");
+    }
+
+    if (isSaveJobRequest) {
+        console.log("Save Job response status:", response.status);
+    }
+
+    let data = {};
+
+    try {
+        data = await response.json();
+    } catch (error) {
+        data = {};
+    }
+
+    if (!response.ok) {
+        if (isSaveJobRequest) {
+            console.error("Save Job response error:", data);
+        }
+
+        console.error("Saved jobs API error:", {
+            url: requestUrl,
+            status: response.status,
+            data
+        });
+
+        const messageParts = [data.error || "Saved jobs request failed."];
+
+        if (data.details) {
+            messageParts.push(data.details);
+        }
+
+        if (data.hint) {
+            messageParts.push("Hint: " + data.hint);
+        }
+
+        if (data.code) {
+            messageParts.push("Code: " + data.code);
+        }
+
+        throw new Error(messageParts.join(" "));
+    }
+
+    return data;
+}
+
+async function getSavedJobsFromSupabase() {
+    if (!currentUser) {
+        return [];
+    }
+
+    try {
+        const data = await fetchSavedJobsApi("/api/jobs");
+        return data.jobs || [];
+
+    } catch (error) {
+        console.error("Load saved jobs error:", error);
+        showToast(error.message || "Could not load saved jobs.", "error");
+        return [];
+    }
+}
+
+if (saveJobButton) {
+    saveJobButton.addEventListener("click", async function () {
+        if (!requireActiveTrial()) return;
+
+        const job = getFormData();
+
+        if (!validateJob(job)) return;
+
+        try {
+            await fetchSavedJobsApi("/api/jobs", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(job)
+            });
+
+        } catch (error) {
+            console.error("Save job error:", error);
+            showToast(error.message || "Could not save job.", "error");
+            return;
+        }
+
+        await displaySavedJobs();
+
+        showToast("✅ Job saved successfully!", "success");
+    });
+}
+
+async function displaySavedJobs() {
     if (!savedJobsList) return;
 
-    const savedJobs = JSON.parse(localStorage.getItem("savedJobs")) || [];
+    if (!isSupabaseConfigured() || !currentUser) {
+        savedJobsList.innerHTML = '<p class="empty-state">Log in to view saved jobs.</p>';
+        return;
+    }
 
-    if (savedJobs.length === 0) {
+    const rows = await getSavedJobsFromSupabase();
+
+    if (rows.length === 0) {
         savedJobsList.innerHTML = '<p class="empty-state">No saved jobs yet</p>';
         return;
     }
 
     savedJobsList.innerHTML = "";
 
-    savedJobs.forEach(function (job, index) {
+    rows.forEach(function (row) {
+        const job = mapDatabaseRowToJob(row);
+
         const jobDiv = document.createElement("div");
 
         jobDiv.classList.add("job-item");
@@ -525,12 +1094,12 @@ function displaySavedJobs() {
             </div>
 
             <div class="job-item-actions">
-                <button class="load-job-btn" data-index="${index}">
+                <button class="load-job-btn" data-id="${job.id}">
                     <i class="fas fa-folder-open"></i>
                     Load
                 </button>
 
-                <button class="delete-job-btn" data-index="${index}">
+                <button class="delete-job-btn" data-id="${job.id}">
                     <i class="fas fa-trash"></i>
                     Delete
                 </button>
@@ -542,22 +1111,31 @@ function displaySavedJobs() {
 }
 
 if (savedJobsList) {
-    savedJobsList.addEventListener("click", function (event) {
-        const savedJobs = JSON.parse(localStorage.getItem("savedJobs")) || [];
+    savedJobsList.addEventListener("click", async function (event) {
+        if (!requireActiveTrial()) return;
 
         const loadBtn = event.target.closest(".load-job-btn");
         const deleteBtn = event.target.closest(".delete-job-btn");
 
         if (loadBtn) {
-            if (!requireActiveTrial()) return;
+            const jobId = loadBtn.dataset.id;
 
-            const index = loadBtn.dataset.index;
-            const job = savedJobs[index];
+            let data;
 
-            if (!job) {
-                showToast("Could not load this job.", "error");
+            try {
+                data = await fetchSavedJobsApi("/api/jobs/" + encodeURIComponent(jobId));
+
+                if (!data.job) {
+                    throw new Error("Saved job was not returned.");
+                }
+
+            } catch (error) {
+                console.error("Load job error:", error);
+                showToast(error.message || "Could not load this job.", "error");
                 return;
             }
+
+            const job = mapDatabaseRowToJob(data.job);
 
             if (document.getElementById("businessName")) {
                 document.getElementById("businessName").value = job.businessName || "";
@@ -580,19 +1158,25 @@ if (savedJobsList) {
             document.getElementById("projectNotes").value = job.projectNotes || "";
 
             generateDocuments(job);
+
             showToast("📂 Saved job loaded.", "success");
         }
 
         if (deleteBtn) {
-            if (!requireActiveTrial()) return;
+            const jobId = deleteBtn.dataset.id;
 
-            const index = deleteBtn.dataset.index;
+            try {
+                await fetchSavedJobsApi("/api/jobs/" + encodeURIComponent(jobId), {
+                    method: "DELETE"
+                });
 
-            savedJobs.splice(index, 1);
+            } catch (error) {
+                console.error("Delete job error:", error);
+                showToast(error.message || "Could not delete job.", "error");
+                return;
+            }
 
-            localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
-
-            displaySavedJobs();
+            await displaySavedJobs();
 
             showToast("🗑️ Saved job deleted.", "success");
         }
@@ -600,16 +1184,25 @@ if (savedJobsList) {
 }
 
 if (clearJobsBtn) {
-    clearJobsBtn.addEventListener("click", function () {
+    clearJobsBtn.addEventListener("click", async function () {
         if (!requireActiveTrial()) return;
 
         const confirmClear = confirm("Are you sure you want to clear all saved jobs?");
 
         if (!confirmClear) return;
 
-        localStorage.removeItem("savedJobs");
+        try {
+            await fetchSavedJobsApi("/api/jobs", {
+                method: "DELETE"
+            });
 
-        displaySavedJobs();
+        } catch (error) {
+            console.error("Clear jobs error:", error);
+            showToast(error.message || "Could not clear saved jobs.", "error");
+            return;
+        }
+
+        await displaySavedJobs();
 
         showToast("🗑️ All saved jobs cleared.", "success");
     });
@@ -1016,6 +1609,8 @@ const aiImproveBtn = document.getElementById("aiImproveBtn");
 if (aiImproveBtn) {
     aiImproveBtn.addEventListener("click", async function () {
         try {
+            if (!requireSignedIn()) return;
+
             const trialCheck = canUseFreeAI();
 
             if (!trialCheck.allowed) {
@@ -1112,13 +1707,23 @@ const upgradeProBtn = document.getElementById("upgradeProBtn");
 if (upgradeProBtn) {
     upgradeProBtn.addEventListener("click", async function () {
         try {
+            if (!requireSignedIn()) return;
+
             upgradeProBtn.disabled = true;
             upgradeProBtn.textContent = "Opening Checkout...";
+
+            const accessToken = await getSupabaseAccessToken();
+
+            if (!accessToken) {
+                showToast("Please log in again before upgrading.", "warning");
+                return;
+            }
 
             const response = await fetch("/create-checkout-session", {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`
                 }
             });
 
@@ -1165,6 +1770,7 @@ async function checkStripeSuccess() {
 
         if (data.paid) {
             activateProAccess();
+            await refreshProfileStatus();
             showToast("Pro unlocked. Thank you for subscribing!", "success");
         } else {
             showToast("Payment could not be verified yet. Contact support if you were charged.", "warning");
@@ -1182,7 +1788,11 @@ async function checkStripeSuccess() {
    INITIALIZE APP
 ========================== */
 
-setupLiabilityModal();
-checkStripeSuccess();
-updateTrialStatus();
-displaySavedJobs();
+async function startApp() {
+    setupLiabilityModal();
+    await initializeAuth();
+    await checkStripeSuccess();
+    updateTrialStatus();
+}
+
+startApp();
